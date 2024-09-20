@@ -266,39 +266,11 @@ export default class Flipbook {
 			} else if (index === this.pages.length - 1) {
 				pagePosition = this.spine2pos;
 			} else {
-				const rootShift =
-					clamp(this.progress - 1.5, 0, Infinity) /
-					(this.pages.length - 3);
-
-				const rootPosition = lerpVectors(
+				pagePosition = lerpVectors(
 					this.spine1pos,
 					this.spine2pos,
-					rootShift,
+					index / (this.pages.length - 1),
 				);
-
-				const pagePoint = (index - 0.5) / (this.pages.length - 2);
-				const pageShift = lerp(-1, 1, pagePoint) * this.spineWidth;
-
-				if (pagePoint < rootShift) {
-					pagePosition = lerpVectors(
-						this.spine1pos,
-						rootPosition,
-						pagePoint / rootShift + 0.35,
-					);
-				} else {
-					pagePosition = lerpVectors(
-						rootPosition,
-						this.spine2pos,
-						(pagePoint - rootShift) / (1 - rootShift) - 0.35,
-					);
-				}
-
-				// pagePosition = lerpVectors(
-				// 	this.spine1pos,
-				// 	this.spine2pos,
-				// 	rootShift + pageShift,
-				// 	// index / (this.pages.length - 1),
-				// );
 			}
 			// TODO: remove
 			// if (this.progress > index + 1 && this.progress < index + 1.5) {

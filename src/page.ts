@@ -87,7 +87,8 @@ export default class Page {
 		];
 
 		this.mesh = new THREE.Mesh(geometry, materials);
-		this.mesh.position.x = this.pageInfo.width / 2;
+		this.mesh.position.x =
+			this.pageInfo.width / 2 - this.pageInfo.thickness / 2;
 
 		this.pivot = new THREE.Group();
 		this.pivot.add(this.mesh);
@@ -97,7 +98,7 @@ export default class Page {
 		for (let i = 0; i < position.count; i++) {
 			const x = position.getX(i) + this.pageInfo.width / 2;
 			this.vertexColumns[i] = Math.round(x / segSize);
-			if(position.getZ(i) > 0){
+			if (position.getZ(i) > 0) {
 				this.frontVertices.push(i);
 			}
 		}
@@ -167,19 +168,18 @@ export default class Page {
 			const column = this.vertexColumns[i];
 			const displacement = columnDisplacements[column];
 
-			const faceAngle = this.frontVertices.includes(i) ? Math.PI / 2 : Math.PI / -2;
+			const faceAngle = this.frontVertices.includes(i)
+				? Math.PI / 2
+				: Math.PI / -2;
 
 			const direction =
 				((-this.bendFactor * 15) / this.xSegments) * column;
 			let dx =
-				(Math.cos(direction + faceAngle) * this.pageInfo.thickness) /
-				2;
+				(Math.cos(direction + faceAngle) * this.pageInfo.thickness) / 2;
 			let dz =
-				(Math.sin(direction + faceAngle) * this.pageInfo.thickness) /
-				2;
+				(Math.sin(direction + faceAngle) * this.pageInfo.thickness) / 2;
 
-				
-				if (displacement) {
+			if (displacement) {
 				const newPos = displacement.clone();
 				newPos.x += dx;
 				newPos.z += dz;

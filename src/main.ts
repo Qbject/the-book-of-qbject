@@ -18,7 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
 				hard: true,
 				width: 453,
 				height: 736,
-				thickness: 20,
+				thickness: 10,
 			},
 			{
 				frontUrl: "https://picsum.photos/id/120/445/720",
@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
 				hard: false,
 				width: 445,
 				height: 720,
-				thickness: 20,
+				thickness: 10,
 			},
 			{
 				frontUrl: "https://picsum.photos/id/122/445/720",
@@ -34,7 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
 				hard: false,
 				width: 445,
 				height: 720,
-				thickness: 20,
+				thickness: 10,
 			},
 			{
 				frontUrl: "https://picsum.photos/id/124/445/720",
@@ -42,7 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
 				hard: false,
 				width: 445,
 				height: 720,
-				thickness: 20,
+				thickness: 10,
 			},
 			{
 				frontUrl: "https://picsum.photos/id/126/445/720",
@@ -50,7 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
 				hard: false,
 				width: 445,
 				height: 720,
-				thickness: 20,
+				thickness: 10,
 			},
 			{
 				frontUrl: "https://picsum.photos/id/130/445/720",
@@ -58,7 +58,7 @@ document.addEventListener("DOMContentLoaded", () => {
 				hard: true,
 				width: 453,
 				height: 736,
-				thickness: 20,
+				thickness: 10,
 			},
 		]);
 	} else {
