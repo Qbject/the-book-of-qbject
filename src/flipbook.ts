@@ -14,13 +14,9 @@ export default class Flipbook {
 	private progress = 0;
 	private stats;
 	private directionalLight: THREE.DirectionalLight;
-	private spineWidth = 50;
-	private spine1pos = new THREE.Vector3(
-		this.spineWidth / 2,
-		0,
-		this.spineWidth,
-	);
-	private spine2pos = new THREE.Vector3(this.spineWidth / 2, 0, 0);
+	private spineWidth = 0;
+	private spine1pos = new THREE.Vector3(0, 0, 0);
+	private spine2pos = new THREE.Vector3(0, 0, 0);
 
 	private curDrag?: {
 		touchId: number | null; // null if mouse is used
@@ -114,6 +110,35 @@ export default class Flipbook {
 		this.addMouseListeners();
 	}
 
+	private updateSpine() {
+		this.spineWidth = this.pages.reduce(
+			(acc, page) => acc + page.pageInfo.thickness,
+			0,
+		);
+		const firstPage = this.pages.at(0);
+		const lastPage = this.pages.at(-1);
+		if (firstPage) {
+			this.spineWidth -= firstPage.pageInfo.thickness / 2;
+		}
+		if (lastPage) {
+			this.spineWidth -= lastPage.pageInfo.thickness / 2;
+		}
+
+		const p = clamp(this.progress, 0, 1);
+		this.spine1pos = new THREE.Vector3(
+			-Math.sin((Math.PI / 2) * p) + 0.5,
+			0,
+			Math.cos((Math.PI / 2) * p),
+		).multiplyScalar(this.spineWidth);
+
+		const p2 = clamp(this.progress - this.pages.length + 1, 0, 1);
+		this.spine2pos = new THREE.Vector3(
+			Math.cos((Math.PI / 2) * p2) - 0.5,
+			0,
+			Math.sin((Math.PI / 2) * p2),
+		).multiplyScalar(this.spineWidth);
+	}
+
 	private addTouchListeners() {
 		this.renderer.domElement.addEventListener("touchstart", event => {
 			if (!this.curDrag) {
@@ -199,7 +224,7 @@ export default class Flipbook {
 	private update(deltaTime: number) {
 		if (!deltaTime) return;
 
-		this.updateSpinePosition();
+		this.updateSpine();
 
 		if (this.curDrag) {
 			const deltaX = this.curDrag.x - this.curDrag.prevX;
@@ -271,15 +296,11 @@ export default class Flipbook {
 					this.spine2pos,
 					index / (this.pages.length - 1),
 				);
+				// console.log(index / (this.pages.length - 1))
 			}
-			// TODO: remove
-			// if (this.progress > index + 1 && this.progress < index + 1.5) {
-			// 	console.log(index);
-			// 	const pagesGap = this.spineWidth / (this.pages.length - 1);
-			// 	pagePosition.x += pagesGap * (this.progress - index - 1) * 2;
-			// }
 			page.pivot.position.set(...pagePosition.toArray());
 
+			// TODO: remove?
 			// updating renderOrder
 			page.mesh.renderOrder =
 				this.pages.length - Math.abs(this.progress - 0.5 - index);
@@ -294,22 +315,6 @@ export default class Flipbook {
 		this.camera.aspect = window.innerWidth / window.innerHeight;
 		this.camera.updateProjectionMatrix();
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
-	}
-
-	private updateSpinePosition() {
-		const p = clamp(this.progress, 0, 1);
-		this.spine1pos = new THREE.Vector3(
-			-Math.sin((Math.PI / 2) * p) + 0.5,
-			0,
-			Math.cos((Math.PI / 2) * p),
-		).multiplyScalar(this.spineWidth);
-
-		const p2 = clamp(this.progress - this.pages.length + 1, 0, 1);
-		this.spine2pos = new THREE.Vector3(
-			Math.cos((Math.PI / 2) * p2) - 0.5,
-			0,
-			Math.sin((Math.PI / 2) * p2),
-		).multiplyScalar(this.spineWidth);
 	}
 
 	public animateCameraShift(

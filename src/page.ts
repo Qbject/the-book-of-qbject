@@ -18,7 +18,7 @@ export default class Page {
 
 	constructor(
 		private book: Flipbook,
-		private pageInfo: PageInfo,
+		public pageInfo: PageInfo,
 	) {
 		if (this.pageInfo.hard) {
 			this.xSegments = 1;
