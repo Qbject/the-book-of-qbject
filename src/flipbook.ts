@@ -67,22 +67,6 @@ export default class Flipbook {
 			return page;
 		});
 
-		// Load the texture
-		// const textureLoader = new THREE.TextureLoader();
-		// textureLoader.load("/img/desk.jpg", texture => {
-		// 	// Create the plane geometry and material
-		// 	const geometry = new THREE.PlaneGeometry(5, 5);
-		// 	const material = new THREE.MeshBasicMaterial({
-		// 		map: texture,
-		// 		side: THREE.DoubleSide,
-		// 	});
-
-		// 	// Create the mesh
-		// 	const plane = new THREE.Mesh(geometry, material);
-		// 	plane.rotation.x = Math.PI / 2; // Ensure it's flat on the XY plane
-		// 	this.scene.add(plane);
-		// });
-
 		const geometry = new THREE.PlaneGeometry(3000, 3000, 1, 1);
 
 		const deskTexture = new THREE.TextureLoader().load("/img/desk.jpg");
@@ -92,6 +76,7 @@ export default class Flipbook {
 		});
 		const plane = new THREE.Mesh(geometry, material);
 		plane.rotation.z = Math.PI / 2; // Ensure it's flat on the XY plane
+		plane.position.z = -20;
 		this.scene.add(plane);
 
 		this.stats = new Stats();
@@ -112,16 +97,16 @@ export default class Flipbook {
 
 	private updateSpine() {
 		this.spineWidth = this.pages.reduce(
-			(acc, page) => acc + page.pageInfo.thickness,
+			(acc, page) => acc + page.pageInfo.thickness * 10,
 			0,
 		);
-		const firstPage = this.pages.at(0);
-		const lastPage = this.pages.at(-1);
+		const firstPage = this.pages[0];
+		const lastPage = this.pages[this.pages.length - 1];
 		if (firstPage) {
-			this.spineWidth -= firstPage.pageInfo.thickness / 2;
+			this.spineWidth -= firstPage.pageInfo.thickness * 10 / 2;
 		}
 		if (lastPage) {
-			this.spineWidth -= lastPage.pageInfo.thickness / 2;
+			this.spineWidth -= lastPage.pageInfo.thickness * 10 / 2;
 		}
 
 		const p = clamp(this.progress, 0, 1);
@@ -274,6 +259,8 @@ export default class Flipbook {
 			}
 		}
 
+		let pageOffset = 0;
+
 		this.pages.forEach((page, index) => {
 			if (index >= this.progress) {
 				// TODO:
@@ -288,15 +275,17 @@ export default class Flipbook {
 			let pagePosition;
 			if (index === 0) {
 				pagePosition = this.spine1pos;
+				pageOffset += page.pageInfo.thickness * 10 / 2 / this.spineWidth;
 			} else if (index === this.pages.length - 1) {
 				pagePosition = this.spine2pos;
 			} else {
+				pageOffset += page.pageInfo.thickness * 10 / 2 / this.spineWidth;
 				pagePosition = lerpVectors(
 					this.spine1pos,
 					this.spine2pos,
-					index / (this.pages.length - 1),
+					pageOffset,
 				);
-				// console.log(index / (this.pages.length - 1))
+				pageOffset += page.pageInfo.thickness * 10 / 2 / this.spineWidth;
 			}
 			page.pivot.position.set(...pagePosition.toArray());
 

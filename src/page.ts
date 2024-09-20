@@ -13,8 +13,7 @@ export default class Page {
 	private xSegments = 20;
 	private ySegments = 1;
 	private zSegments = 1;
-	private vertexColumns: number[] = [];
-	private frontVertices: number[] = [];
+	private vertexOriginalPositions: THREE.Vector3[] = [];
 
 	constructor(
 		private book: Flipbook,
@@ -42,41 +41,6 @@ export default class Page {
 			this.zSegments,
 		);
 
-		// Custom shader material to handle both textures
-		// const material = new THREE.ShaderMaterial({
-		// 	uniforms: {
-		// 		frontTexture: { value: this.frontTexture },
-		// 		backTexture: { value: this.backTexture },
-		// 	},
-		// 	vertexShader: `
-		// 		varying vec2 vUv;
-		// 		void main() {
-		// 			vUv = uv;
-		// 			gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-		// 		}
-		// 	`,
-		// 	fragmentShader: `
-		// 		uniform sampler2D frontTexture;
-		// 		uniform sampler2D backTexture;
-		// 		varying vec2 vUv;
-		// 		void main() {
-		// 			vec4 frontColor = texture2D(frontTexture, vUv);
-		// 			vec4 backColor = texture2D(backTexture, vUv);
-		// 			if (gl_FrontFacing) {
-		// 				gl_FragColor = frontColor;
-		// 			} else {
-		// 				gl_FragColor = backColor;
-		// 			}
-		// 		}
-		// 	`,
-		// 	side: THREE.DoubleSide,
-		// });
-
-		// const material = new THREE.MeshBasicMaterial({
-		// 	color: 0xffffff,
-		// 	wireframe: true
-		// });
-
 		const materials = [
 			new THREE.MeshBasicMaterial({ map: this.edgeTexture }), // right face
 			new THREE.MeshBasicMaterial({ map: this.edgeTexture }), // left face
@@ -88,20 +52,39 @@ export default class Page {
 
 		this.mesh = new THREE.Mesh(geometry, materials);
 		this.mesh.position.x =
-			this.pageInfo.width / 2 - this.pageInfo.thickness / 2;
+			this.pageInfo.width / 2 - this.pageInfo.thickness * 10 / 2;
 
 		this.pivot = new THREE.Group();
 		this.pivot.add(this.mesh);
 
-		const segSize = this.pageInfo.width / this.xSegments;
 		const position = geometry.attributes.position;
+		const leftThickness = this.pageInfo.thickness * 10;
+		const rightThickness = this.pageInfo.thickness;
+		const width = this.pageInfo.width;
+
 		for (let i = 0; i < position.count; i++) {
-			const x = position.getX(i) + this.pageInfo.width / 2;
-			this.vertexColumns[i] = Math.round(x / segSize);
-			if (position.getZ(i) > 0) {
-				this.frontVertices.push(i);
+			const x = position.getX(i) + width / 2;
+			const t = x / width; // Interpolation factor
+			const thickness = leftThickness * (1 - t) + rightThickness * t;
+			const z = position.getZ(i);
+
+			if (z > 0) {
+				position.setZ(i, thickness / 2);
+			} else {
+				position.setZ(i, -thickness / 2);
 			}
+
+			this.vertexOriginalPositions[i] = new THREE.Vector3(
+				position.getX(i),
+				position.getY(i),
+				position.getZ(i),
+			);
+			// this.vertexColumns[i] = Math.round(x / segSize);
+			// if (z > 0) {
+			// 	this.frontVertices.push(i);
+			// }
 		}
+		position.needsUpdate = true;
 	}
 
 	public setTurnProgress(progress: number) {
@@ -161,31 +144,28 @@ export default class Page {
 			}
 		}
 
-		const geometry = this.mesh.geometry as THREE.PlaneGeometry;
+		const geometry = this.mesh.geometry;
 		const position = geometry.attributes.position;
 
+		const segSize = this.pageInfo.width / this.xSegments;
 		for (let i = 0; i < position.count; i++) {
-			const column = this.vertexColumns[i];
+			const originalPos = this.vertexOriginalPositions[i];
+			const column = Math.round(
+				(originalPos.x + this.pageInfo.width / 2) / segSize,
+			);
 			const displacement = columnDisplacements[column];
 
-			const faceAngle = this.frontVertices.includes(i)
-				? Math.PI / 2
-				: Math.PI / -2;
-
-			const direction =
-				((-this.bendFactor * 15) / this.xSegments) * column;
-			let dx =
-				(Math.cos(direction + faceAngle) * this.pageInfo.thickness) / 2;
-			let dz =
-				(Math.sin(direction + faceAngle) * this.pageInfo.thickness) / 2;
-
 			if (displacement) {
-				const newPos = displacement.clone();
-				newPos.x += dx;
-				newPos.z += dz;
+				const direction =
+					((-this.bendFactor * 15) / this.xSegments) * column +
+					Math.PI / 2;
 
-				position.setZ(i, newPos.z);
-				position.setX(i, newPos.x);
+				const newX =
+					displacement.x + Math.cos(direction) * originalPos.z;
+				const newZ =
+					displacement.z + Math.sin(direction) * originalPos.z;
+				position.setX(i, newX);
+				position.setZ(i, newZ);
 			}
 		}
 
