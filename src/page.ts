@@ -1,4 +1,3 @@
-import Flipbook from "./flipbook";
 import * as THREE from "three";
 import { clamp, rotateY } from "./util";
 
@@ -14,28 +13,36 @@ export default class Page {
 	private ySegments = 1;
 	private zSegments = 1;
 	private vertexOriginalPositions: THREE.Vector3[] = [];
+	public frontUrl: string;
+	public backUrl: string;
+	public width: number;
+	public height: number;
+	public isHard: boolean;
+	public thickness: number;
+	public rootThickness: number;
 
-	constructor(
-		private book: Flipbook,
-		public pageInfo: PageInfo,
-	) {
-		if (this.pageInfo.hard) {
+	constructor(pageParams: PageParams) {
+		this.frontUrl = pageParams.frontUrl;
+		this.backUrl = pageParams.backUrl;
+		this.width = pageParams.width;
+		this.height = pageParams.height;
+		this.isHard = !!pageParams.isHard;
+		this.thickness = pageParams.thickness || 2;
+		this.rootThickness = pageParams.rootThickness || 4;
+
+		if (this.isHard) {
 			this.xSegments = 1;
 		}
 
 		// Load front and back textures
-		this.frontTexture = new THREE.TextureLoader().load(
-			this.pageInfo.frontUrl,
-		);
-		this.backTexture = new THREE.TextureLoader().load(
-			this.pageInfo.backUrl,
-		);
+		this.frontTexture = new THREE.TextureLoader().load(this.frontUrl);
+		this.backTexture = new THREE.TextureLoader().load(this.backUrl);
 		this.edgeTexture = new THREE.TextureLoader().load("/img/1.png");
 
 		const geometry = new THREE.BoxGeometry(
-			this.pageInfo.width,
-			this.pageInfo.height,
-			this.pageInfo.thickness,
+			this.width,
+			this.height,
+			this.thickness,
 			this.xSegments,
 			this.ySegments,
 			this.zSegments,
@@ -51,16 +58,15 @@ export default class Page {
 		];
 
 		this.mesh = new THREE.Mesh(geometry, materials);
-		this.mesh.position.x =
-			this.pageInfo.width / 2 - this.pageInfo.thickness * 10 / 2;
+		this.mesh.position.x = this.width / 2 - this.rootThickness / 2;
 
 		this.pivot = new THREE.Group();
 		this.pivot.add(this.mesh);
 
 		const position = geometry.attributes.position;
-		const leftThickness = this.pageInfo.thickness * 10;
-		const rightThickness = this.pageInfo.thickness;
-		const width = this.pageInfo.width;
+		const leftThickness = this.rootThickness;
+		const rightThickness = this.thickness;
+		const width = this.width;
 
 		for (let i = 0; i < position.count; i++) {
 			const x = position.getX(i) + width / 2;
@@ -107,7 +113,7 @@ export default class Page {
 	}
 
 	private setBendFactor(bendFactor: number) {
-		if (this.pageInfo.hard) return;
+		if (this.isHard) return;
 
 		if (Math.abs(bendFactor) < 0.000001) {
 			bendFactor = 0;
@@ -130,7 +136,7 @@ export default class Page {
 	private applyBend() {
 		const columnDisplacements: THREE.Vector3[] = [];
 		for (let i = 0; i < this.xSegments + 1; i++) {
-			const x = (i / this.xSegments - 0.5) * this.pageInfo.width;
+			const x = (i / this.xSegments - 0.5) * this.width;
 			columnDisplacements.push(new THREE.Vector3(x, 0, 0));
 		}
 
@@ -147,11 +153,11 @@ export default class Page {
 		const geometry = this.mesh.geometry;
 		const position = geometry.attributes.position;
 
-		const segSize = this.pageInfo.width / this.xSegments;
+		const segSize = this.width / this.xSegments;
 		for (let i = 0; i < position.count; i++) {
 			const originalPos = this.vertexOriginalPositions[i];
 			const column = Math.round(
-				(originalPos.x + this.pageInfo.width / 2) / segSize,
+				(originalPos.x + this.width / 2) / segSize,
 			);
 			const displacement = columnDisplacements[column];
 

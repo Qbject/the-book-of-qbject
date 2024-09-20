@@ -1,8 +1,8 @@
 import * as THREE from "three";
 import { gsap } from "gsap";
 import Page from "./page";
-import { clamp, lerp, lerpVectors, simulateHeavyLoad } from "./util";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { clamp, lerpVectors } from "./util";
+// import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "stats.js";
 
 export default class Flipbook {
@@ -31,9 +31,9 @@ export default class Flipbook {
 		inertia: number;
 	};
 
-	private controls: OrbitControls;
+	// private controls: OrbitControls;
 
-	constructor(container: HTMLElement, pages: PageInfo[]) {
+	constructor(container: HTMLElement, pages: PageParams[]) {
 		this.dom = { container };
 
 		this.scene = new THREE.Scene();
@@ -61,8 +61,8 @@ export default class Flipbook {
 		// 	this.renderer.domElement,
 		// );
 
-		this.pages = pages.map(pageInfo => {
-			const page = new Page(this, pageInfo);
+		this.pages = pages.map(pageParams => {
+			const page = new Page(pageParams);
 			this.scene.add(page.pivot);
 			return page;
 		});
@@ -97,16 +97,16 @@ export default class Flipbook {
 
 	private updateSpine() {
 		this.spineWidth = this.pages.reduce(
-			(acc, page) => acc + page.pageInfo.thickness * 10,
+			(acc, page) => acc + page.rootThickness,
 			0,
 		);
 		const firstPage = this.pages[0];
 		const lastPage = this.pages[this.pages.length - 1];
 		if (firstPage) {
-			this.spineWidth -= firstPage.pageInfo.thickness * 10 / 2;
+			this.spineWidth -= firstPage.rootThickness / 2;
 		}
 		if (lastPage) {
-			this.spineWidth -= lastPage.pageInfo.thickness * 10 / 2;
+			this.spineWidth -= lastPage.rootThickness / 2;
 		}
 
 		const p = clamp(this.progress, 0, 1);
@@ -275,17 +275,17 @@ export default class Flipbook {
 			let pagePosition;
 			if (index === 0) {
 				pagePosition = this.spine1pos;
-				pageOffset += page.pageInfo.thickness * 10 / 2 / this.spineWidth;
+				pageOffset += page.rootThickness / 2 / this.spineWidth;
 			} else if (index === this.pages.length - 1) {
 				pagePosition = this.spine2pos;
 			} else {
-				pageOffset += page.pageInfo.thickness * 10 / 2 / this.spineWidth;
+				pageOffset += page.rootThickness / 2 / this.spineWidth;
 				pagePosition = lerpVectors(
 					this.spine1pos,
 					this.spine2pos,
 					pageOffset,
 				);
-				pageOffset += page.pageInfo.thickness * 10 / 2 / this.spineWidth;
+				pageOffset += page.rootThickness / 2 / this.spineWidth;
 			}
 			page.pivot.position.set(...pagePosition.toArray());
 

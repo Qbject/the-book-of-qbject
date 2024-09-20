@@ -1,8 +1,9 @@
-type PageInfo = {
+type PageParams = {
     frontUrl: string;
     backUrl: string;
-	hard: boolean;
     width: number;
     height: number;
-    thickness: number;
+	isHard?: boolean;
+    thickness?: number;
+    rootThickness?: number;
 };
