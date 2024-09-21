@@ -58,3 +58,51 @@ export function lerp(a: number, b: number, t: number): number {
 	t = clamp(t, 0, 1);
 	return a + (b - a) * t;
 }
+
+export function cubicBezier(
+	P0: THREE.Vector2,
+	P1: THREE.Vector2,
+	P2: THREE.Vector2,
+	P3: THREE.Vector2,
+	t: number,
+): THREE.Vector2 {
+	const oneMinusT = 1 - t;
+
+	const point = P0.clone()
+		.multiplyScalar(oneMinusT * oneMinusT * oneMinusT)
+		.add(P1.clone().multiplyScalar(3 * oneMinusT * oneMinusT * t))
+		.add(P2.clone().multiplyScalar(3 * oneMinusT * t * t))
+		.add(P3.clone().multiplyScalar(t * t * t));
+
+	return point;
+}
+
+export function bezierDirection(
+	P0: THREE.Vector2,
+	P1: THREE.Vector2,
+	P2: THREE.Vector2,
+	P3: THREE.Vector2,
+	t: number,
+): THREE.Vector2 {
+	const oneMinusT = 1 - t;
+
+	const direction = P1.clone()
+		.sub(P0)
+		.multiplyScalar(3 * oneMinusT * oneMinusT)
+		.add(
+			P2.clone()
+				.sub(P1)
+				.multiplyScalar(6 * oneMinusT * t),
+		)
+		.add(
+			P3.clone()
+				.sub(P2)
+				.multiplyScalar(3 * t * t),
+		);
+
+	return direction.normalize();
+}
+
+export function directionInRadians(direction: THREE.Vector2) {
+	return Math.atan2(direction.y, direction.x);
+}

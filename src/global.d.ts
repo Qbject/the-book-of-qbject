@@ -3,7 +3,17 @@ type PageParams = {
     backUrl: string;
     width: number;
     height: number;
-	isHard?: boolean;
+	flexibility?: number;
     thickness?: number;
     rootThickness?: number;
 };
+
+type PageControlPointParams = {
+    turnProgress: number;
+    distance: number;
+}
+
+type PageControlPoint = {
+    x: number;
+    z: number;
+}

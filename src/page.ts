@@ -1,36 +1,65 @@
 import * as THREE from "three";
-import { clamp, rotateY } from "./util";
+import {
+	bezierDirection,
+	clamp,
+	cubicBezier,
+	directionInRadians,
+	rotateY,
+} from "./util";
 
 export default class Page {
+	public frontUrl: string;
+	public backUrl: string;
+	public width: number;
+	public height: number;
+	public flexibility: number;
+	public thickness: number;
+	public rootThickness: number;
+
 	public mesh: THREE.Mesh;
 	public frontTexture: THREE.Texture;
 	public backTexture: THREE.Texture;
 	public edgeTexture: THREE.Texture;
 	public pivot: THREE.Group;
+
 	private turnProgress: number = 0;
 	private bendFactor = 0;
 	private xSegments = 20;
 	private ySegments = 1;
 	private zSegments = 1;
 	private vertexOriginalPositions: THREE.Vector3[] = [];
-	public frontUrl: string;
-	public backUrl: string;
-	public width: number;
-	public height: number;
-	public isHard: boolean;
-	public thickness: number;
-	public rootThickness: number;
+
+	private controlPoints: PageControlPointParams[] = [
+		{
+			turnProgress: 0,
+			distance: 0,
+		},
+		{
+			turnProgress: 0,
+			distance: 0.25,
+		},
+		{
+			turnProgress: 0,
+			distance: 0.62,
+		},
+		{
+			turnProgress: 0,
+			distance: 1,
+		},
+	];
+
+	private elevation = 0;
 
 	constructor(pageParams: PageParams) {
 		this.frontUrl = pageParams.frontUrl;
 		this.backUrl = pageParams.backUrl;
 		this.width = pageParams.width;
 		this.height = pageParams.height;
-		this.isHard = !!pageParams.isHard;
+		this.flexibility = pageParams.flexibility || 0;
 		this.thickness = pageParams.thickness || 2;
 		this.rootThickness = pageParams.rootThickness || 4;
 
-		if (this.isHard) {
+		if (this.flexibility === 0) {
 			this.xSegments = 1;
 		}
 
@@ -93,10 +122,71 @@ export default class Page {
 		position.needsUpdate = true;
 	}
 
-	public setTurnProgress(progress: number) {
-		const progressDelta = progress - this.turnProgress;
-		this.turnProgress = progress;
-		this.setBendFactor(clamp(this.bendFactor + progressDelta, -1, 1));
+	private calcControlPoint(
+		pointParams: PageControlPointParams,
+	): PageControlPoint {
+		return {
+			x:
+				Math.cos(pointParams.turnProgress * Math.PI) *
+				pointParams.distance *
+				this.width,
+			z:
+				Math.sin(pointParams.turnProgress * Math.PI) *
+				pointParams.distance *
+				this.width,
+		};
+	}
+
+	public updateGeometry() {
+		const position = this.mesh.geometry.attributes.position;
+		for (let i = 0; i < position.count; i++) {
+			const originalPos = this.vertexOriginalPositions[i];
+			const t = (originalPos.x + this.width / 2) / this.width;
+
+			const controlPoints = this.controlPoints
+				.map(cp => this.calcControlPoint(cp))
+				.map(cp => new THREE.Vector2(cp.x, cp.z));
+
+			// console.log(JSON.stringify(controlPoints))
+
+			const pos = cubicBezier(
+				controlPoints[0],
+				controlPoints[1],
+				controlPoints[2],
+				controlPoints[3],
+				t,
+			);
+
+			const direction =
+				directionInRadians(
+					bezierDirection(
+						controlPoints[0],
+						controlPoints[1],
+						controlPoints[2],
+						controlPoints[3],
+						t,
+					),
+				) +
+				Math.PI / 2;
+
+			const newX = pos.x + Math.cos(direction) * originalPos.z;
+			const newZ = pos.y + Math.sin(direction) * originalPos.z;
+			position.setX(i, newX);
+			position.setZ(i, newZ);
+		}
+
+		position.needsUpdate = true;
+	}
+
+	public setTurnProgress(turnProgress: number) {
+		this.controlPoints = this.controlPoints.map(cp => ({
+			...cp,
+			turnProgress,
+		}));
+
+		// const progressDelta = turnProgress - this.turnProgress;
+		// this.turnProgress = turnProgress;
+		// this.setBendFactor(clamp(this.bendFactor + progressDelta, -1, 1));
 	}
 
 	public update(deltaTime: number) {
@@ -113,7 +203,7 @@ export default class Page {
 	}
 
 	private setBendFactor(bendFactor: number) {
-		if (this.isHard) return;
+		if (this.flexibility === 0) return;
 
 		if (Math.abs(bendFactor) < 0.000001) {
 			bendFactor = 0;

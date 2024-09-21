@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { gsap } from "gsap";
 import Page from "./page";
 import { clamp, lerpVectors } from "./util";
-// import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "stats.js";
 
 export default class Flipbook {
@@ -17,6 +17,8 @@ export default class Flipbook {
 	private spineWidth = 0;
 	private spine1pos = new THREE.Vector3(0, 0, 0);
 	private spine2pos = new THREE.Vector3(0, 0, 0);
+	
+	private controls: OrbitControls;
 
 	private curDrag?: {
 		touchId: number | null; // null if mouse is used
@@ -31,7 +33,6 @@ export default class Flipbook {
 		inertia: number;
 	};
 
-	// private controls: OrbitControls;
 
 	constructor(container: HTMLElement, pages: PageParams[]) {
 		this.dom = { container };
@@ -198,7 +199,7 @@ export default class Flipbook {
 			this.stats.begin();
 			this.update(deltaTime);
 			this.stats.end();
-			// this.controls.update();
+			this.controls?.update?.();
 
 			requestAnimationFrame(animate);
 		}).bind(this);
@@ -294,7 +295,8 @@ export default class Flipbook {
 			page.mesh.renderOrder =
 				this.pages.length - Math.abs(this.progress - 0.5 - index);
 
-			page.update(deltaTime);
+			// page.update(deltaTime);
+			page.updateGeometry();
 		});
 
 		this.renderer.render(this.scene, this.camera);
