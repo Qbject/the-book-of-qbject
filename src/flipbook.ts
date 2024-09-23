@@ -7,6 +7,11 @@ import InnerPage from "./InnerPage";
 import CoverPage from "./CoverPage";
 
 export default class Flipbook {
+	public containerEl: HTMLElement;
+	public pages: Page[];
+	public spineThickness: number;
+	public spineHeight: number;
+
 	public group: THREE.Group;
 	private scene: THREE.Scene;
 	private camera: THREE.PerspectiveCamera;
@@ -35,10 +40,16 @@ export default class Flipbook {
 	};
 
 	constructor(
-		public containerEl: HTMLElement,
-		public pages: Page[],
-		public spineThickness: number = 5,
+		params: FlipBookParams,
+		// public containerEl: HTMLElement,
+		// public pages: Page[],
+		// public spineThickness: number = 5,
 	) {
+		this.containerEl = params.containerEl;
+		this.pages = params.pages;
+		this.spineThickness = params.spineThickness || 5;
+		this.spineHeight = params.spineHeight;
+
 		this.scene = new THREE.Scene();
 		this.camera = new THREE.PerspectiveCamera(
 			20,
@@ -78,6 +89,19 @@ export default class Flipbook {
 			this.spineZ,
 		);
 		this.spine2pos = new THREE.Vector3(this.spineWidth / 2, 0, this.spineZ);
+
+		// init spine mesh
+		const spineGeometry = new THREE.BoxGeometry(
+			this.spineWidth,
+			this.spineHeight,
+			this.spineThickness,
+		);
+		const spineMaterial = new THREE.MeshBasicMaterial({
+			color: 0xFFFFFF,
+		});
+		const spineMesh = new THREE.Mesh(spineGeometry, spineMaterial);
+		spineMesh.position.z = this.spineZ;
+		this.group.add(spineMesh);
 
 		let spinePlacementOffset = -(this.spineWidth / 2);
 		this.pages.forEach((page, index) => {

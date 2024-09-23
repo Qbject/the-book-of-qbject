@@ -34,3 +34,10 @@ interface Page {
     updateGeometry: () => void;
     setTurnProgress: (number) => void;
 }
+
+type FlipBookParams = {
+	containerEl: HTMLElement;
+	pages: Page[];
+	spineHeight: number;
+	spineThickness?: number;
+};

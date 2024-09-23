@@ -53,7 +53,7 @@ export default class CoverPage implements Page {
 		];
 
 		this.mesh = new THREE.Mesh(geometry, materials);
-		this.mesh.position.z = this.width / 2;
+		this.mesh.position.z = this.width / 2 - this.rootThickness / 2;
 
 		this.pivot = new THREE.Group();
 		this.pivot.add(this.mesh);
