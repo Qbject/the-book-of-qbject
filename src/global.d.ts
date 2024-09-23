@@ -1,19 +1,36 @@
-type PageParams = {
-    frontUrl: string;
-    backUrl: string;
-    width: number;
-    height: number;
+type InnerPageParams = {
+	frontUrl: string;
+	backUrl: string;
+	width: number;
+	height: number;
 	flexibility?: number;
-    thickness?: number;
-    rootThickness?: number;
+	thickness?: number;
+	rootThickness?: number;
+};
+
+type CoverPageParams = {
+	frontUrl: string;
+	backUrl: string;
+	width: number;
+	height: number;
+	thickness?: number;
+	rootThickness?: number;
 };
 
 type PageControlPointParams = {
-    turnProgress: number;
-    distance: number;
-}
+	turnProgress: number;
+	distance: number;
+};
 
 type PageControlPoint = {
-    x: number;
-    z: number;
+	x: number;
+	z: number;
+};
+
+interface Page {
+	pivot: THREE.Group;
+	mesh: THREE.Mesh;
+    rootThickness: number;
+    updateGeometry: () => void;
+    setTurnProgress: (number) => void;
 }

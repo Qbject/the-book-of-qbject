@@ -1,23 +1,24 @@
 import * as THREE from "three";
 import { gsap } from "gsap";
-import Page from "./page";
 import { clamp, lerpVectors } from "./util";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "stats.js";
+import InnerPage from "./InnerPage";
+import CoverPage from "./CoverPage";
 
 export default class Flipbook {
+	public group: THREE.Group;
 	private scene: THREE.Scene;
 	private camera: THREE.PerspectiveCamera;
 	private renderer: THREE.WebGLRenderer;
-	private dom: { container: HTMLElement };
-	private pages: Page[] = [];
 	private progress = 0;
 	private stats;
 	private directionalLight: THREE.DirectionalLight;
-	private spineWidth = 0;
 	private spine1pos = new THREE.Vector3(0, 0, 0);
 	private spine2pos = new THREE.Vector3(0, 0, 0);
-	
+	private spineWidth: number;
+	private spineZ: number;
+
 	private controls: OrbitControls;
 
 	private curDrag?: {
@@ -33,10 +34,11 @@ export default class Flipbook {
 		inertia: number;
 	};
 
-
-	constructor(container: HTMLElement, pages: PageParams[]) {
-		this.dom = { container };
-
+	constructor(
+		public containerEl: HTMLElement,
+		public pages: Page[],
+		public spineThickness: number = 5,
+	) {
 		this.scene = new THREE.Scene();
 		this.camera = new THREE.PerspectiveCamera(
 			20,
@@ -48,7 +50,7 @@ export default class Flipbook {
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
 		this.renderer.domElement.classList.add("flipbook-canvas");
-		this.dom.container.appendChild(this.renderer.domElement);
+		this.containerEl.appendChild(this.renderer.domElement);
 
 		this.directionalLight = new THREE.DirectionalLight(0xffffff, 1);
 		this.directionalLight.position.set(0, 0, 2500);
@@ -62,38 +64,68 @@ export default class Flipbook {
 		// 	this.renderer.domElement,
 		// );
 
-		this.pages = pages.map(pageParams => {
-			const page = new Page(pageParams);
-			this.scene.add(page.pivot);
-			return page;
+		this.group = new THREE.Group();
+		this.scene.add(this.group);
+
+		// init spine
+		this.spineWidth = this.pages
+			.filter(page => page instanceof InnerPage)
+			.reduce((acc, page) => acc + page.rootThickness, 0);
+		this.spineZ = this.spineThickness / 2;
+		this.spine1pos = new THREE.Vector3(
+			-this.spineWidth / 2,
+			0,
+			this.spineZ,
+		);
+		this.spine2pos = new THREE.Vector3(this.spineWidth / 2, 0, this.spineZ);
+
+		let spinePlacementOffset = -(this.spineWidth / 2);
+		this.pages.forEach((page, index) => {
+			this.group.add(page.pivot);
+
+			if (page instanceof CoverPage) {
+				page.pivot.position.z = this.spineZ;
+				page.pivot.position.x =
+					index === 0
+						? this.spine1pos.x - page.rootThickness / 2
+						: this.spine2pos.x + page.rootThickness / 2;
+			}
+
+			if (page instanceof InnerPage) {
+				page.pivot.position.z = this.spineZ + this.spineThickness / 2;
+				page.pivot.position.x =
+					spinePlacementOffset + page.rootThickness / 2;
+				spinePlacementOffset += page.rootThickness;
+			}
 		});
 
-		const geometry = new THREE.PlaneGeometry(3000, 3000, 1, 1);
-
+		// create desk
+		const deskGeometry = new THREE.PlaneGeometry(3000, 3000, 1, 1);
 		const deskTexture = new THREE.TextureLoader().load("/img/desk.jpg");
-
-		const material = new THREE.MeshStandardMaterial({
+		const deskMaterial = new THREE.MeshStandardMaterial({
 			map: deskTexture,
 		});
-		const plane = new THREE.Mesh(geometry, material);
-		plane.rotation.z = Math.PI / 2; // Ensure it's flat on the XY plane
-		plane.position.z = -20;
-		this.scene.add(plane);
+		const deskMesh = new THREE.Mesh(deskGeometry, deskMaterial);
+		deskMesh.rotation.z = Math.PI / 2; // Ensure it's flat on the XY plane
+		deskMesh.position.z = -20;
+		this.scene.add(deskMesh);
 
+		// Add fps counter
 		this.stats = new Stats();
 		this.stats.showPanel(0);
 		document.body.appendChild(this.stats.dom);
 
-		this.runAnimation();
-
+		// event listeners
 		window.addEventListener(
 			"resize",
 			this.onWindowResize.bind(this),
 			false,
 		);
-
 		this.addTouchListeners();
 		this.addMouseListeners();
+
+		// main loop
+		this.runAnimation();
 	}
 
 	private updateSpine() {
@@ -210,7 +242,7 @@ export default class Flipbook {
 	private update(deltaTime: number) {
 		if (!deltaTime) return;
 
-		this.updateSpine();
+		// this.updateSpine();
 
 		if (this.curDrag) {
 			const deltaX = this.curDrag.x - this.curDrag.prevX;
@@ -260,36 +292,42 @@ export default class Flipbook {
 			}
 		}
 
-		let pageOffset = 0;
+		// let pageOffset = 0;
+
+		const bookOpenFactor = Math.min(
+			this.progress,
+			this.pages.length - this.progress,
+			1,
+		);
+
+		// this.pages
+		// 	.filter(page => page instanceof CoverPage)
+		// 	.forEach((page, index) =>
+		// 		page.setTurnProgress(index ? bookOpenFactor : -bookOpenFactor),
+		// 	);
+
+		this.pages
+			// .filter(page => page instanceof InnerPage)
+			.forEach((page, index) => {
+				let tp;
+				if (index >= this.progress) {
+					// TODO:
+					// page.setTurnProgress(0.21 - 0.022 * index);
+					tp = bookOpenFactor;
+				} else if (index < Math.floor(this.progress)) {
+					tp = -bookOpenFactor;
+				} else {
+					if (page instanceof CoverPage) {
+						tp = index ? bookOpenFactor : -bookOpenFactor;
+					} else {
+						tp = (this.progress % 1) * -2 + 1;
+					}
+				}
+
+				page.setTurnProgress(tp);
+			});
 
 		this.pages.forEach((page, index) => {
-			if (index >= this.progress) {
-				// TODO:
-				// page.setTurnProgress(0.21 - 0.022 * index);
-				page.setTurnProgress(0);
-			} else if (index < Math.floor(this.progress)) {
-				page.setTurnProgress(1);
-			} else {
-				page.setTurnProgress(this.progress % 1);
-			}
-
-			let pagePosition;
-			if (index === 0) {
-				pagePosition = this.spine1pos;
-				pageOffset += page.rootThickness / 2 / this.spineWidth;
-			} else if (index === this.pages.length - 1) {
-				pagePosition = this.spine2pos;
-			} else {
-				pageOffset += page.rootThickness / 2 / this.spineWidth;
-				pagePosition = lerpVectors(
-					this.spine1pos,
-					this.spine2pos,
-					pageOffset,
-				);
-				pageOffset += page.rootThickness / 2 / this.spineWidth;
-			}
-			page.pivot.position.set(...pagePosition.toArray());
-
 			// TODO: remove?
 			// updating renderOrder
 			page.mesh.renderOrder =

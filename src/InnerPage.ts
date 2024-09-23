@@ -4,10 +4,11 @@ import {
 	clamp,
 	cubicBezier,
 	directionInRadians,
+	lerp,
 	rotateY,
 } from "./util";
 
-export default class Page {
+export default class InnerPage implements Page {
 	public frontUrl: string;
 	public backUrl: string;
 	public width: number;
@@ -24,10 +25,10 @@ export default class Page {
 
 	private turnProgress: number = 0;
 	private bendFactor = 0;
-	private xSegments = 20;
+	private xSegments = 1;
 	private ySegments = 1;
-	private zSegments = 1;
-	private vertexOriginalPositions: THREE.Vector3[] = [];
+	private zSegments = 20;
+	private vertexRelCoords: THREE.Vector3[] = [];
 
 	private controlPoints: PageControlPointParams[] = [
 		{
@@ -48,9 +49,7 @@ export default class Page {
 		},
 	];
 
-	private elevation = 0;
-
-	constructor(pageParams: PageParams) {
+	constructor(pageParams: InnerPageParams) {
 		this.frontUrl = pageParams.frontUrl;
 		this.backUrl = pageParams.backUrl;
 		this.width = pageParams.width;
@@ -69,55 +68,59 @@ export default class Page {
 		this.edgeTexture = new THREE.TextureLoader().load("/img/1.png");
 
 		const geometry = new THREE.BoxGeometry(
-			this.width,
-			this.height,
 			this.thickness,
+			this.height,
+			this.width,
 			this.xSegments,
 			this.ySegments,
 			this.zSegments,
 		);
 
 		const materials = [
-			new THREE.MeshBasicMaterial({ map: this.edgeTexture }), // right face
-			new THREE.MeshBasicMaterial({ map: this.edgeTexture }), // left face
+			new THREE.MeshBasicMaterial({ map: this.frontTexture }), // right face
+			new THREE.MeshBasicMaterial({ map: this.backTexture }), // left face
 			new THREE.MeshBasicMaterial({ map: this.edgeTexture }), // top face
 			new THREE.MeshBasicMaterial({ map: this.edgeTexture }), // bottom face
-			new THREE.MeshBasicMaterial({ map: this.frontTexture }), // front face
-			new THREE.MeshBasicMaterial({ map: this.backTexture }), // back face
+			new THREE.MeshBasicMaterial({ map: this.edgeTexture }), // front face
+			new THREE.MeshBasicMaterial({ map: this.edgeTexture }), // back face
 		];
 
 		this.mesh = new THREE.Mesh(geometry, materials);
-		this.mesh.position.x = this.width / 2 - this.rootThickness / 2;
+		// this.mesh.position.z = this.width / 2;
 
 		this.pivot = new THREE.Group();
 		this.pivot.add(this.mesh);
 
 		const position = geometry.attributes.position;
-		const leftThickness = this.rootThickness;
-		const rightThickness = this.thickness;
-		const width = this.width;
 
 		for (let i = 0; i < position.count; i++) {
-			const x = position.getX(i) + width / 2;
-			const t = x / width; // Interpolation factor
-			const thickness = leftThickness * (1 - t) + rightThickness * t;
-			const z = position.getZ(i);
-
-			if (z > 0) {
-				position.setZ(i, thickness / 2);
-			} else {
-				position.setZ(i, -thickness / 2);
-			}
-
-			this.vertexOriginalPositions[i] = new THREE.Vector3(
-				position.getX(i),
-				position.getY(i),
-				position.getZ(i),
+			this.vertexRelCoords[i] = new THREE.Vector3(
+				position.getX(i) / this.thickness + 0.5,
+				position.getY(i) / this.height + 0.5,
+				position.getZ(i) / this.width + 0.5,
 			);
-			// this.vertexColumns[i] = Math.round(x / segSize);
+			console.log(
+				this.vertexRelCoords[i].x,
+				this.vertexRelCoords[i].y,
+				this.vertexRelCoords[i].z,
+			);
+
+			// const x = position.getX(i) + this.width / 2;
+			// const t = x / this.width; // Interpolation factor
+			// const thickness = this.rootThickness * (1 - t) + this.thickness * t;
+			// const z = position.getZ(i);
+
 			// if (z > 0) {
-			// 	this.frontVertices.push(i);
+			// 	position.setZ(i, thickness / 2);
+			// } else {
+			// 	position.setZ(i, -thickness / 2);
 			// }
+
+			// this.vertexOriginalPositions[i] = new THREE.Vector3(
+			// 	position.getX(i),
+			// 	position.getY(i),
+			// 	position.getZ(i),
+			// );
 		}
 		position.needsUpdate = true;
 	}
@@ -127,11 +130,11 @@ export default class Page {
 	): PageControlPoint {
 		return {
 			x:
-				Math.cos(pointParams.turnProgress * Math.PI) *
+				Math.sin(pointParams.turnProgress * (Math.PI / 2)) *
 				pointParams.distance *
 				this.width,
 			z:
-				Math.sin(pointParams.turnProgress * Math.PI) *
+				Math.cos(pointParams.turnProgress * (Math.PI / 2)) *
 				pointParams.distance *
 				this.width,
 		};
@@ -140,8 +143,7 @@ export default class Page {
 	public updateGeometry() {
 		const position = this.mesh.geometry.attributes.position;
 		for (let i = 0; i < position.count; i++) {
-			const originalPos = this.vertexOriginalPositions[i];
-			const t = (originalPos.x + this.width / 2) / this.width;
+			const relCoord = this.vertexRelCoords[i];
 
 			const controlPoints = this.controlPoints
 				.map(cp => this.calcControlPoint(cp))
@@ -154,7 +156,7 @@ export default class Page {
 				controlPoints[1],
 				controlPoints[2],
 				controlPoints[3],
-				t,
+				relCoord.z,
 			);
 
 			const direction =
@@ -164,13 +166,20 @@ export default class Page {
 						controlPoints[1],
 						controlPoints[2],
 						controlPoints[3],
-						t,
+						relCoord.z,
 					),
 				) +
 				Math.PI / 2;
 
-			const newX = pos.x + Math.cos(direction) * originalPos.z;
-			const newZ = pos.y + Math.sin(direction) * originalPos.z;
+			const thickness = lerp(
+				this.rootThickness,
+				this.thickness,
+				relCoord.z,
+			);
+
+			const sign = -Math.sign(relCoord.x - 0.5);
+			const newX = pos.x + Math.cos(direction) * (thickness / 2) * sign;
+			const newZ = pos.y + Math.sin(direction) * (thickness / 2) * sign;
 			position.setX(i, newX);
 			position.setZ(i, newZ);
 		}
@@ -183,6 +192,7 @@ export default class Page {
 			...cp,
 			turnProgress,
 		}));
+		// console.log(JSON.stringify(this.controlPoints))
 
 		// const progressDelta = turnProgress - this.turnProgress;
 		// this.turnProgress = turnProgress;
@@ -245,10 +255,8 @@ export default class Page {
 
 		const segSize = this.width / this.xSegments;
 		for (let i = 0; i < position.count; i++) {
-			const originalPos = this.vertexOriginalPositions[i];
-			const column = Math.round(
-				(originalPos.x + this.width / 2) / segSize,
-			);
+			const relCoord = this.vertexRelCoords[i];
+			const column = Math.round((relCoord.z + this.width / 2) / segSize);
 			const displacement = columnDisplacements[column];
 
 			if (displacement) {
@@ -256,10 +264,8 @@ export default class Page {
 					((-this.bendFactor * 15) / this.xSegments) * column +
 					Math.PI / 2;
 
-				const newX =
-					displacement.x + Math.cos(direction) * originalPos.z;
-				const newZ =
-					displacement.z + Math.sin(direction) * originalPos.z;
+				const newX = displacement.x + Math.cos(direction) * relCoord.x;
+				const newZ = displacement.z + Math.sin(direction) * relCoord.x;
 				position.setX(i, newX);
 				position.setZ(i, newZ);
 			}
