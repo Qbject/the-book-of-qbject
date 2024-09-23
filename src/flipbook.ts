@@ -97,7 +97,7 @@ export default class Flipbook {
 			this.spineThickness,
 		);
 		const spineMaterial = new THREE.MeshBasicMaterial({
-			color: 0xFFFFFF,
+			color: 0xffffff,
 		});
 		const spineMesh = new THREE.Mesh(spineGeometry, spineMaterial);
 		spineMesh.position.z = this.spineZ;
@@ -251,7 +251,7 @@ export default class Flipbook {
 					grabbedPageIndex: clamp(
 						this.progress + (progressDelta > 0 ? 0 : -1),
 						0,
-						this.pages.length,
+						this.pages.length - 1,
 					),
 					inertia: 0,
 				};
@@ -293,23 +293,22 @@ export default class Flipbook {
 			1,
 		);
 
-		this.pages
-			.forEach((page, index) => {
-				let tp;
-				if (index >= this.progress) {
-					tp = bookOpenFactor;
-				} else if (index < Math.floor(this.progress)) {
-					tp = -bookOpenFactor;
+		this.pages.forEach((page, index) => {
+			let tp;
+			if (index >= this.progress) {
+				tp = bookOpenFactor;
+			} else if (index < Math.floor(this.progress)) {
+				tp = -bookOpenFactor;
+			} else {
+				if (page instanceof CoverPage) {
+					tp = index ? bookOpenFactor : -bookOpenFactor;
 				} else {
-					if (page instanceof CoverPage) {
-						tp = index ? bookOpenFactor : -bookOpenFactor;
-					} else {
-						tp = (this.progress % 1) * -2 + 1;
-					}
+					tp = (this.progress % 1) * -2 + 1;
 				}
+			}
 
-				page.setTurnProgress(tp);
-			});
+			page.setTurnProgress(tp);
+		});
 
 		this.pages.forEach((page, index) => {
 			// TODO: remove?
