@@ -1,11 +1,9 @@
 import * as THREE from "three";
 import {
 	bezierDirection,
-	clamp,
 	cubicBezier,
 	directionInRadians,
 	lerp,
-	rotateY,
 } from "./util";
 
 export default class InnerPage implements Page {
@@ -23,8 +21,6 @@ export default class InnerPage implements Page {
 	public edgeTexture: THREE.Texture;
 	public pivot: THREE.Group;
 
-	private turnProgress: number = 0;
-	private bendFactor = 0;
 	private xSegments = 1;
 	private ySegments = 1;
 	private zSegments = 20;
@@ -86,7 +82,6 @@ export default class InnerPage implements Page {
 		];
 
 		this.mesh = new THREE.Mesh(geometry, materials);
-		// this.mesh.position.z = this.width / 2;
 
 		this.pivot = new THREE.Group();
 		this.pivot.add(this.mesh);
@@ -104,23 +99,6 @@ export default class InnerPage implements Page {
 				this.vertexRelCoords[i].y,
 				this.vertexRelCoords[i].z,
 			);
-
-			// const x = position.getX(i) + this.width / 2;
-			// const t = x / this.width; // Interpolation factor
-			// const thickness = this.rootThickness * (1 - t) + this.thickness * t;
-			// const z = position.getZ(i);
-
-			// if (z > 0) {
-			// 	position.setZ(i, thickness / 2);
-			// } else {
-			// 	position.setZ(i, -thickness / 2);
-			// }
-
-			// this.vertexOriginalPositions[i] = new THREE.Vector3(
-			// 	position.getX(i),
-			// 	position.getY(i),
-			// 	position.getZ(i),
-			// );
 		}
 		position.needsUpdate = true;
 	}
@@ -192,85 +170,5 @@ export default class InnerPage implements Page {
 			...cp,
 			turnProgress,
 		}));
-		// console.log(JSON.stringify(this.controlPoints))
-
-		// const progressDelta = turnProgress - this.turnProgress;
-		// this.turnProgress = turnProgress;
-		// this.setBendFactor(clamp(this.bendFactor + progressDelta, -1, 1));
-	}
-
-	public update(deltaTime: number) {
-		// update rotation
-		this.pivot.rotation.y = Math.PI * -this.turnProgress;
-
-		// gravity
-		const targetBend = -(this.turnProgress - 0.5) * 0.1;
-
-		// handle bend faloff
-		const faloffDelta = targetBend - this.bendFactor;
-		const faloff = faloffDelta * deltaTime * 15;
-		this.setBendFactor(this.bendFactor + faloff);
-	}
-
-	private setBendFactor(bendFactor: number) {
-		if (this.flexibility === 0) return;
-
-		if (Math.abs(bendFactor) < 0.000001) {
-			bendFactor = 0;
-		}
-
-		bendFactor = clamp(
-			bendFactor,
-			(this.turnProgress - 1) * 0.25,
-			this.turnProgress * 0.25,
-		);
-
-		if (bendFactor === this.bendFactor) {
-			return;
-		}
-
-		this.bendFactor = bendFactor;
-		this.applyBend();
-	}
-
-	private applyBend() {
-		const columnDisplacements: THREE.Vector3[] = [];
-		for (let i = 0; i < this.xSegments + 1; i++) {
-			const x = (i / this.xSegments - 0.5) * this.width;
-			columnDisplacements.push(new THREE.Vector3(x, 0, 0));
-		}
-
-		for (let i = columnDisplacements.length - 1; i >= 0; i--) {
-			for (let j = i + 1; j < columnDisplacements.length; j++) {
-				columnDisplacements[j] = rotateY(
-					columnDisplacements[j],
-					columnDisplacements[i],
-					(-this.bendFactor * 15) / this.xSegments,
-				);
-			}
-		}
-
-		const geometry = this.mesh.geometry;
-		const position = geometry.attributes.position;
-
-		const segSize = this.width / this.xSegments;
-		for (let i = 0; i < position.count; i++) {
-			const relCoord = this.vertexRelCoords[i];
-			const column = Math.round((relCoord.z + this.width / 2) / segSize);
-			const displacement = columnDisplacements[column];
-
-			if (displacement) {
-				const direction =
-					((-this.bendFactor * 15) / this.xSegments) * column +
-					Math.PI / 2;
-
-				const newX = displacement.x + Math.cos(direction) * relCoord.x;
-				const newZ = displacement.z + Math.sin(direction) * relCoord.x;
-				position.setX(i, newX);
-				position.setZ(i, newZ);
-			}
-		}
-
-		position.needsUpdate = true;
 	}
 }

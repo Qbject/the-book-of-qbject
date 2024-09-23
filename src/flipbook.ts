@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { gsap } from "gsap";
-import { clamp, lerpVectors } from "./util";
+import { clamp } from "./util";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "stats.js";
 import InnerPage from "./InnerPage";
@@ -126,35 +126,6 @@ export default class Flipbook {
 
 		// main loop
 		this.runAnimation();
-	}
-
-	private updateSpine() {
-		this.spineWidth = this.pages.reduce(
-			(acc, page) => acc + page.rootThickness,
-			0,
-		);
-		const firstPage = this.pages[0];
-		const lastPage = this.pages[this.pages.length - 1];
-		if (firstPage) {
-			this.spineWidth -= firstPage.rootThickness / 2;
-		}
-		if (lastPage) {
-			this.spineWidth -= lastPage.rootThickness / 2;
-		}
-
-		const p = clamp(this.progress, 0, 1);
-		this.spine1pos = new THREE.Vector3(
-			-Math.sin((Math.PI / 2) * p) + 0.5,
-			0,
-			Math.cos((Math.PI / 2) * p),
-		).multiplyScalar(this.spineWidth);
-
-		const p2 = clamp(this.progress - this.pages.length + 1, 0, 1);
-		this.spine2pos = new THREE.Vector3(
-			Math.cos((Math.PI / 2) * p2) - 0.5,
-			0,
-			Math.sin((Math.PI / 2) * p2),
-		).multiplyScalar(this.spineWidth);
 	}
 
 	private addTouchListeners() {
@@ -292,27 +263,16 @@ export default class Flipbook {
 			}
 		}
 
-		// let pageOffset = 0;
-
 		const bookOpenFactor = Math.min(
 			this.progress,
 			this.pages.length - this.progress,
 			1,
 		);
 
-		// this.pages
-		// 	.filter(page => page instanceof CoverPage)
-		// 	.forEach((page, index) =>
-		// 		page.setTurnProgress(index ? bookOpenFactor : -bookOpenFactor),
-		// 	);
-
 		this.pages
-			// .filter(page => page instanceof InnerPage)
 			.forEach((page, index) => {
 				let tp;
 				if (index >= this.progress) {
-					// TODO:
-					// page.setTurnProgress(0.21 - 0.022 * index);
 					tp = bookOpenFactor;
 				} else if (index < Math.floor(this.progress)) {
 					tp = -bookOpenFactor;
@@ -330,8 +290,8 @@ export default class Flipbook {
 		this.pages.forEach((page, index) => {
 			// TODO: remove?
 			// updating renderOrder
-			page.mesh.renderOrder =
-				this.pages.length - Math.abs(this.progress - 0.5 - index);
+			// page.mesh.renderOrder =
+			// 	this.pages.length - Math.abs(this.progress - 0.5 - index);
 
 			// page.update(deltaTime);
 			page.updateGeometry();
