@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import {
+	approach,
 	bezierDirection,
 	cubicBezier,
 	directionInRadians,
@@ -118,7 +119,15 @@ export default class InnerPage implements Page {
 		};
 	}
 
-	public updateGeometry() {
+	public update(dt: number) {
+		// updating bend
+		this.controlPoints[3].turnProgress = approach(
+			this.controlPoints[3].turnProgress,
+			this.controlPoints[2].turnProgress,
+			5,
+			dt,
+		);
+
 		const position = this.mesh.geometry.attributes.position;
 		for (let i = 0; i < position.count; i++) {
 			const relCoord = this.vertexRelCoords[i];
@@ -166,9 +175,24 @@ export default class InnerPage implements Page {
 	}
 
 	public setTurnProgress(turnProgress: number) {
-		this.controlPoints = this.controlPoints.map(cp => ({
-			...cp,
-			turnProgress,
-		}));
+		this.controlPoints.forEach((cp, index) => {
+			if (index === 1 || index === 2) {
+				this.controlPoints[index] = {
+					...cp,
+					turnProgress,
+				};
+			}
+			if (index === 3) {
+				this.controlPoints[index] = {
+					...cp,
+					turnProgress: approach(
+						cp.turnProgress,
+						turnProgress,
+						0.1,
+						0.01,
+					),
+				};
+			}
+		});
 	}
 }

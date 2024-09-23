@@ -30,9 +30,9 @@ type PageControlPoint = {
 interface Page {
 	pivot: THREE.Group;
 	mesh: THREE.Mesh;
-    rootThickness: number;
-    updateGeometry: () => void;
-    setTurnProgress: (number) => void;
+	rootThickness: number;
+	update: (dt: number) => void;
+	setTurnProgress: (number) => void;
 }
 
 type FlipBookParams = {

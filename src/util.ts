@@ -106,3 +106,18 @@ export function bezierDirection(
 export function directionInRadians(direction: THREE.Vector2) {
 	return Math.atan2(direction.y, direction.x);
 }
+
+export function approach(
+	val: number,
+	target: number,
+	speed: number,
+	dt: number,
+): number {
+	let difference = target - val;
+	if (Math.abs(difference) < 0.0001) {
+		return target;
+	}
+	let change = difference * (1 - Math.exp(-speed * dt));
+	val += change;
+	return val;
+}

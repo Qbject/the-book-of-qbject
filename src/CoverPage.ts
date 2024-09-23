@@ -76,7 +76,7 @@ export default class CoverPage implements Page {
 		this.turnProgress = turnProgress;
 	}
 
-	public updateGeometry() {
+	public update() {
 		// update rotation
 		this.pivot.rotation.y = (Math.PI / 2) * this.turnProgress;
 	}

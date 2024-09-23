@@ -221,10 +221,10 @@ export default class Flipbook {
 		let previousTime = performance.now();
 
 		const animate = ((currentTime: number) => {
-			let deltaTime = (currentTime - previousTime) / 1000;
+			let dt = (currentTime - previousTime) / 1000;
 			previousTime = currentTime;
 			this.stats.begin();
-			this.update(deltaTime);
+			this.update(dt);
 			this.stats.end();
 			this.controls?.update?.();
 
@@ -234,8 +234,8 @@ export default class Flipbook {
 		animate(performance.now());
 	}
 
-	private update(deltaTime: number) {
-		if (!deltaTime) return;
+	private update(dt: number) {
+		if (!dt) return;
 
 		// this.updateSpine();
 
@@ -260,7 +260,7 @@ export default class Flipbook {
 			// updating inertia
 			if (this.curTurn) {
 				this.curTurn.inertia =
-					(this.curTurn.inertia * 2 + progressDelta / deltaTime) / 3;
+					(this.curTurn.inertia * 2 + progressDelta / dt) / 3;
 			}
 
 			this.progress += progressDelta;
@@ -270,9 +270,9 @@ export default class Flipbook {
 			if (!this.curDrag) {
 				// inertia and gravity
 				const inertiaShift =
-					((this.progress % 1) - 0.5) * 10 * deltaTime;
+					((this.progress % 1) - 0.5) * 10 * dt;
 				this.curTurn.inertia += inertiaShift;
-				this.progress += this.curTurn.inertia * deltaTime;
+				this.progress += this.curTurn.inertia * dt;
 			}
 
 			this.progress = clamp(
@@ -317,7 +317,7 @@ export default class Flipbook {
 			// 	this.pages.length - Math.abs(this.progress - 0.5 - index);
 
 			// page.update(deltaTime);
-			page.updateGeometry();
+			page.update(dt);
 		});
 
 		this.renderer.render(this.scene, this.camera);
