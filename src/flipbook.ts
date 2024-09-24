@@ -11,6 +11,9 @@ export default class Flipbook {
 	public pages: Page[];
 	public spineThickness: number;
 	public spineHeight: number;
+	public spineEdgeTexture: THREE.Texture;
+	public spineFrontTexture: THREE.Texture;
+	public spineBackTexture: THREE.Texture;
 
 	public group: THREE.Group;
 	private scene: THREE.Scene;
@@ -91,18 +94,31 @@ export default class Flipbook {
 		this.spine2pos = new THREE.Vector3(this.spineWidth / 2, 0, this.spineZ);
 
 		// init spine mesh
+		// TODO:
+		const spineTextureUrl = `https://picsum.photos/id/236/${this.spineWidth}/${this.spineHeight}`;
+		this.spineFrontTexture = new THREE.TextureLoader().load(
+			spineTextureUrl,
+		);
+		this.spineBackTexture = new THREE.TextureLoader().load(spineTextureUrl);
+		this.spineEdgeTexture = new THREE.TextureLoader().load(spineTextureUrl);
+		const spineMaterials = [
+			new THREE.MeshBasicMaterial({ map: this.spineEdgeTexture }), // right face
+			new THREE.MeshBasicMaterial({ map: this.spineEdgeTexture }), // left face
+			new THREE.MeshBasicMaterial({ map: this.spineEdgeTexture }), // top face
+			new THREE.MeshBasicMaterial({ map: this.spineEdgeTexture }), // bottom face
+			new THREE.MeshBasicMaterial({ map: this.spineFrontTexture }), // front face
+			new THREE.MeshBasicMaterial({ map: this.spineBackTexture }), // back face
+		];
 		const spineGeometry = new THREE.BoxGeometry(
 			this.spineWidth,
 			this.spineHeight,
 			this.spineThickness,
 		);
-		const spineMaterial = new THREE.MeshBasicMaterial({
-			color: 0xffffff,
-		});
-		const spineMesh = new THREE.Mesh(spineGeometry, spineMaterial);
+		const spineMesh = new THREE.Mesh(spineGeometry, spineMaterials);
 		spineMesh.position.z = this.spineZ;
 		this.group.add(spineMesh);
 
+		// init pages
 		let spinePlacementOffset = -(this.spineWidth / 2);
 		this.pages.forEach((page, index) => {
 			this.group.add(page.pivot);
@@ -116,6 +132,13 @@ export default class Flipbook {
 			}
 
 			if (page instanceof InnerPage) {
+				const elevationLeft =
+					spinePlacementOffset +
+					this.spineWidth / 2 +
+					page.rootThickness / 2;
+				const elevationRight = this.spineWidth - elevationLeft;
+				page.setElevation(elevationLeft, elevationRight);
+
 				page.pivot.position.z = this.spineZ + this.spineThickness / 2;
 				page.pivot.position.x =
 					spinePlacementOffset + page.rootThickness / 2;
@@ -269,8 +292,7 @@ export default class Flipbook {
 		if (this.curTurn) {
 			if (!this.curDrag) {
 				// inertia and gravity
-				const inertiaShift =
-					((this.progress % 1) - 0.5) * 10 * dt;
+				const inertiaShift = ((this.progress % 1) - 0.5) * 10 * dt;
 				this.curTurn.inertia += inertiaShift;
 				this.progress += this.curTurn.inertia * dt;
 			}
@@ -313,8 +335,9 @@ export default class Flipbook {
 		this.pages.forEach((page, index) => {
 			// TODO: remove?
 			// updating renderOrder
-			// page.mesh.renderOrder =
-			// 	this.pages.length - Math.abs(this.progress - 0.5 - index);
+			page.mesh.renderOrder =
+				this.pages.length - Math.abs(this.progress - 0.5 - index);
+			console.log(index, page.mesh.renderOrder);
 
 			// page.update(deltaTime);
 			page.update(dt);

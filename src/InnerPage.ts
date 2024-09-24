@@ -2,6 +2,7 @@ import * as THREE from "three";
 import {
 	approach,
 	bezierDirection,
+	clamp,
 	cubicBezier,
 	directionInRadians,
 	lerp,
@@ -15,6 +16,8 @@ export default class InnerPage implements Page {
 	public flexibility: number;
 	public thickness: number;
 	public rootThickness: number;
+	public elevationLeft = 0;
+	public elevationRight = 0;
 
 	public mesh: THREE.Mesh;
 	public frontTexture: THREE.Texture;
@@ -38,7 +41,7 @@ export default class InnerPage implements Page {
 		},
 		{
 			turnProgress: 0,
-			distance: 0.62,
+			distance: 0.5,
 		},
 		{
 			turnProgress: 0,
@@ -106,8 +109,9 @@ export default class InnerPage implements Page {
 
 	private calcControlPoint(
 		pointParams: PageControlPointParams,
+		index: number,
 	): PageControlPoint {
-		return {
+		const point = {
 			x:
 				Math.sin(pointParams.turnProgress * (Math.PI / 2)) *
 				pointParams.distance *
@@ -117,9 +121,16 @@ export default class InnerPage implements Page {
 				pointParams.distance *
 				this.width,
 		};
+		if (index === 2 || index === 3) {
+			point.z = Math.max(this.getElevation(), point.z);
+		}
+		return point;
 	}
 
 	public update(dt: number) {
+		// updating elevation
+		this.controlPoints[1].distance = this.getElevation() / this.width * 2;
+
 		// updating bend
 		this.controlPoints[3].turnProgress = approach(
 			this.controlPoints[3].turnProgress,
@@ -133,7 +144,7 @@ export default class InnerPage implements Page {
 			const relCoord = this.vertexRelCoords[i];
 
 			const controlPoints = this.controlPoints
-				.map(cp => this.calcControlPoint(cp))
+				.map((cp, i) => this.calcControlPoint(cp, i))
 				.map(cp => new THREE.Vector2(cp.x, cp.z));
 
 			// console.log(JSON.stringify(controlPoints))
@@ -176,7 +187,7 @@ export default class InnerPage implements Page {
 
 	public setTurnProgress(turnProgress: number) {
 		this.controlPoints.forEach((cp, index) => {
-			if (index === 1 || index === 2) {
+			if (index === 2) {
 				this.controlPoints[index] = {
 					...cp,
 					turnProgress,
@@ -194,5 +205,16 @@ export default class InnerPage implements Page {
 				};
 			}
 		});
+	}
+
+	public setElevation(elevationLeft: number, elevationRight: number) {
+		this.elevationLeft = elevationLeft;
+		this.elevationRight = elevationRight;
+		// this.controlPoints[1].distance = elevation / this.width;
+	}
+
+	public getElevation() {
+		const turnProgress = this.controlPoints[2].turnProgress + 1 / 2;
+		return lerp(this.elevationLeft, this.elevationRight, turnProgress);
 	}
 }
