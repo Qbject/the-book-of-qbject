@@ -1,23 +1,3 @@
-type PageParams = {
-	frontUrl: string;
-	backUrl: string;
-	width: number;
-	height: number;
-	thickness?: number;
-	rootThickness?: number;
-	isCover?: boolean;
-};
-
-type PageControlPointParams = {
-	turnProgress: number;
-	distance: number;
-};
-
-type PageControlPoint = {
-	x: number;
-	z: number;
-};
-
 type FlipBookParams = {
 	containerEl: HTMLElement;
 	pageWidth: number;
@@ -37,9 +17,26 @@ type FlipBookParams = {
 	};
 };
 
-type FlipBookTextures = {
-	spineEdgeLR?: ThreeMFLoader.Texture;
-	spineEdgeTB?: ThreeMFLoader.Texture;
-	spineInner?: ThreeMFLoader.Texture;
-	spineOuter?: ThreeMFLoader.Texture;
+type PageParams = {
+	textureUrls: {
+		front: string;
+		back: string;
+		edgeLR: string;
+		edgeTB: string;
+	};
+	width: number;
+	height: number;
+	thickness?: number;
+	rootThickness?: number;
+	isCover?: boolean;
+};
+
+type PageControlPointParams = {
+	turnProgress: number;
+	distance: number;
+};
+
+type PageControlPoint = {
+	x: number;
+	z: number;
 };

@@ -8,8 +8,7 @@ import {
 } from "./util";
 
 export default class Page {
-	public frontUrl: string;
-	public backUrl: string;
+	public textureUrls;
 	public width: number;
 	public height: number;
 	public thickness: number;
@@ -19,9 +18,6 @@ export default class Page {
 	public isCover = false;
 
 	public mesh: THREE.Mesh;
-	public frontTexture: THREE.Texture;
-	public backTexture: THREE.Texture;
-	public edgeTexture: THREE.Texture;
 	public pivot: THREE.Group;
 
 	private turnProgress: number = 0;
@@ -51,8 +47,7 @@ export default class Page {
 	];
 
 	constructor(pageParams: PageParams) {
-		this.frontUrl = pageParams.frontUrl;
-		this.backUrl = pageParams.backUrl;
+		this.textureUrls = pageParams.textureUrls;
 		this.width = pageParams.width;
 		this.height = pageParams.height;
 		this.thickness = pageParams.thickness || 2;
@@ -70,9 +65,20 @@ export default class Page {
 		}
 
 		// Load front and back textures
-		this.frontTexture = new THREE.TextureLoader().load(this.frontUrl);
-		this.backTexture = new THREE.TextureLoader().load(this.backUrl);
-		this.edgeTexture = new THREE.TextureLoader().load("/img/1.png");
+		const textures = {
+			front: new THREE.TextureLoader().load(this.textureUrls.front),
+			back: new THREE.TextureLoader().load(this.textureUrls.back),
+			edgeLR: new THREE.TextureLoader().load(this.textureUrls.edgeLR),
+			edgeTB: new THREE.TextureLoader().load(this.textureUrls.edgeTB),
+		};
+		const materials = [
+			new THREE.MeshBasicMaterial({ map: textures.back }), // right face
+			new THREE.MeshBasicMaterial({ map: textures.front }), // left face
+			new THREE.MeshBasicMaterial({ map: textures.edgeTB }), // top face
+			new THREE.MeshBasicMaterial({ map: textures.edgeTB }), // bottom face
+			new THREE.MeshBasicMaterial({ map: textures.edgeLR }), // front face
+			new THREE.MeshBasicMaterial({ map: textures.edgeLR }), // back face
+		];
 
 		const geometry = new THREE.BoxGeometry(
 			this.thickness,
@@ -83,22 +89,12 @@ export default class Page {
 			this.zSegments,
 		);
 
-		const materials = [
-			new THREE.MeshBasicMaterial({ map: this.backTexture }), // right face
-			new THREE.MeshBasicMaterial({ map: this.frontTexture }), // left face
-			new THREE.MeshBasicMaterial({ map: this.edgeTexture }), // top face
-			new THREE.MeshBasicMaterial({ map: this.edgeTexture }), // bottom face
-			new THREE.MeshBasicMaterial({ map: this.edgeTexture }), // front face
-			new THREE.MeshBasicMaterial({ map: this.edgeTexture }), // back face
-		];
-
 		this.mesh = new THREE.Mesh(geometry, materials);
 
 		this.pivot = new THREE.Group();
 		this.pivot.add(this.mesh);
 
 		const position = geometry.attributes.position;
-
 		for (let i = 0; i < position.count; i++) {
 			this.vertexRelCoords[i] = new THREE.Vector3(
 				position.getX(i) / this.thickness + 0.5,
@@ -220,9 +216,15 @@ export default class Page {
 			if (index === 3) {
 				this.controlPoints[index] = {
 					...cp,
-					turnProgress: (this.isCover || !this.bendingEnabled)
-						? turnProgress
-						: approach(cp.turnProgress, turnProgress, 0.1, 0.01),
+					turnProgress:
+						this.isCover || !this.bendingEnabled
+							? turnProgress
+							: approach(
+									cp.turnProgress,
+									turnProgress,
+									0.1,
+									0.01,
+								),
 				};
 			}
 		});

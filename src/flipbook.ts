@@ -7,30 +7,30 @@ import Page from "./Page";
 
 export default class Flipbook {
 	private containerEl: HTMLElement;
-	private pages: Page[] = [];
-	private textureUrls;
-	private textures: FlipBookTextures = {};
-
-	private group: THREE.Group;
-	private scene: THREE.Scene;
-	private camera: THREE.PerspectiveCamera;
-	private renderer: THREE.WebGLRenderer;
-	private progress = 0;
-	private stats;
-	private directionalLight: THREE.DirectionalLight;
-	private spine1pos = new THREE.Vector3(0, 0, 0);
-	private spine2pos = new THREE.Vector3(0, 0, 0);
-	private spineWidth: number;
-	private spineZ: number;
-
 	private pageWidth: number;
 	private pageHeight: number;
 	private pageThickness: number;
 	private pageRootThickness: number;
 	private coverThickness: number;
 	private coverMargin: number;
+	private textureUrls;
+	
+	private pages: Page[] = [];
+	private group: THREE.Group;
+	private scene: THREE.Scene;
+	private camera: THREE.PerspectiveCamera;
+	private renderer: THREE.WebGLRenderer;
+	private spineMesh: THREE.Mesh;
+	private directionalLight: THREE.DirectionalLight;
 
+	private progress = 0;
+	private spine1pos = new THREE.Vector3(0, 0, 0);
+	private spine2pos = new THREE.Vector3(0, 0, 0);
+	private spineWidth: number;
+	private spineZ: number;
+	
 	private controls: OrbitControls;
+	private stats;
 
 	private curDrag?: {
 		touchId: number | null; // null if mouse is used
@@ -68,8 +68,12 @@ export default class Flipbook {
 
 			this.pages.push(
 				new Page({
-					frontUrl: this.textureUrls.pages[i * 2],
-					backUrl: this.textureUrls.pages[i * 2 + 1],
+					textureUrls: {
+						front: this.textureUrls.pages[i * 2],
+						back: this.textureUrls.pages[i * 2],
+						edgeLR: this.textureUrls.coverEdgeLR,
+						edgeTB: this.textureUrls.coverEdgeTB,
+					},
 					width,
 					height,
 					thickness: isCover
@@ -129,34 +133,36 @@ export default class Flipbook {
 		this.spine2pos = this.spine1pos.clone().setX(-this.spine1pos.x);
 
 		// init spine mesh
-		this.textures.spineInner = new THREE.TextureLoader().load(
-			this.textureUrls.spineInner,
-		);
-		this.textures.spineOuter = new THREE.TextureLoader().load(
-			this.textureUrls.spineOuter,
-		);
-		this.textures.spineEdgeLR = new THREE.TextureLoader().load(
-			this.textureUrls.spineEdgeLR,
-		);
-		this.textures.spineEdgeTB = new THREE.TextureLoader().load(
-			this.textureUrls.spineEdgeTB,
-		);
+		const textures = {
+			spineInner: new THREE.TextureLoader().load(
+				this.textureUrls.spineInner,
+			),
+			spineOuter: new THREE.TextureLoader().load(
+				this.textureUrls.spineOuter,
+			),
+			spineEdgeLR: new THREE.TextureLoader().load(
+				this.textureUrls.spineEdgeLR,
+			),
+			spineEdgeTB: new THREE.TextureLoader().load(
+				this.textureUrls.spineEdgeTB,
+			),
+		};
 		const spineMaterials = [
-			new THREE.MeshBasicMaterial({ map: this.textures.spineEdgeLR }), // right face
-			new THREE.MeshBasicMaterial({ map: this.textures.spineEdgeLR }), // left face
-			new THREE.MeshBasicMaterial({ map: this.textures.spineEdgeTB }), // top face
-			new THREE.MeshBasicMaterial({ map: this.textures.spineEdgeTB }), // bottom face
-			new THREE.MeshBasicMaterial({ map: this.textures.spineInner }), // front face
-			new THREE.MeshBasicMaterial({ map: this.textures.spineOuter }), // back face
+			new THREE.MeshBasicMaterial({ map: textures.spineEdgeLR }), // right face
+			new THREE.MeshBasicMaterial({ map: textures.spineEdgeLR }), // left face
+			new THREE.MeshBasicMaterial({ map: textures.spineEdgeTB }), // top face
+			new THREE.MeshBasicMaterial({ map: textures.spineEdgeTB }), // bottom face
+			new THREE.MeshBasicMaterial({ map: textures.spineInner }), // front face
+			new THREE.MeshBasicMaterial({ map: textures.spineOuter }), // back face
 		];
 		const spineGeometry = new THREE.BoxGeometry(
 			this.spineWidth,
 			this.pageHeight + this.coverMargin * 2,
 			this.coverThickness,
 		);
-		const spineMesh = new THREE.Mesh(spineGeometry, spineMaterials);
-		this.group.add(spineMesh);
-		spineMesh.position.z = this.spineZ;
+		this.spineMesh = new THREE.Mesh(spineGeometry, spineMaterials);
+		this.group.add(this.spineMesh);
+		this.spineMesh.position.z = this.spineZ;
 
 		// init pages
 		let spinePlacementStart =
