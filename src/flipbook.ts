@@ -1,21 +1,17 @@
 import * as THREE from "three";
 import { gsap } from "gsap";
-import { clamp } from "./util";
+import { clamp, rotateY } from "./util";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "stats.js";
-import InnerPage from "./InnerPage";
-import CoverPage from "./CoverPage";
+import Page from "./Page";
 
 export default class Flipbook {
-	public containerEl: HTMLElement;
-	public pages: Page[];
-	public spineThickness: number;
-	public spineHeight: number;
-	public spineEdgeTexture: THREE.Texture;
-	public spineFrontTexture: THREE.Texture;
-	public spineBackTexture: THREE.Texture;
+	private containerEl: HTMLElement;
+	private pages: Page[] = [];
+	private textureUrls;
+	private textures: FlipBookTextures = {};
 
-	public group: THREE.Group;
+	private group: THREE.Group;
 	private scene: THREE.Scene;
 	private camera: THREE.PerspectiveCamera;
 	private renderer: THREE.WebGLRenderer;
@@ -26,6 +22,13 @@ export default class Flipbook {
 	private spine2pos = new THREE.Vector3(0, 0, 0);
 	private spineWidth: number;
 	private spineZ: number;
+
+	private pageWidth: number;
+	private pageHeight: number;
+	private pageThickness: number;
+	private pageRootThickness: number;
+	private coverThickness: number;
+	private coverMargin: number;
 
 	private controls: OrbitControls;
 
@@ -42,16 +45,43 @@ export default class Flipbook {
 		inertia: number;
 	};
 
-	constructor(
-		params: FlipBookParams,
-		// public containerEl: HTMLElement,
-		// public pages: Page[],
-		// public spineThickness: number = 5,
-	) {
+	constructor(params: FlipBookParams) {
 		this.containerEl = params.containerEl;
-		this.pages = params.pages;
-		this.spineThickness = params.spineThickness || 5;
-		this.spineHeight = params.spineHeight;
+		this.pageWidth = params.pageWidth;
+		this.pageHeight = params.pageHeight;
+		this.pageThickness = params.pageThickness || 2;
+		this.pageRootThickness = params.pageRootThickness || 4;
+		this.coverThickness = params.coverThickness || 5;
+		this.coverMargin = params.coverMargin || 8;
+		this.textureUrls = params.textures;
+
+		// add pages
+		const totalPages = Math.ceil(this.textureUrls.pages.length / 2);
+		for (let i = 0; i < totalPages; i++) {
+			const isCover = i === 0 || i === totalPages - 1;
+			const width = isCover
+				? this.pageWidth + this.coverMargin + this.coverThickness
+				: this.pageWidth;
+			const height = isCover
+				? this.pageHeight + this.coverMargin * 2
+				: this.pageHeight;
+
+			this.pages.push(
+				new Page({
+					frontUrl: this.textureUrls.pages[i * 2],
+					backUrl: this.textureUrls.pages[i * 2 + 1],
+					width,
+					height,
+					thickness: isCover
+						? this.coverThickness
+						: this.pageThickness,
+					rootThickness: isCover
+						? this.coverThickness
+						: this.pageRootThickness,
+					isCover,
+				}),
+			);
+		}
 
 		this.scene = new THREE.Scene();
 		this.camera = new THREE.PerspectiveCamera(
@@ -60,6 +90,11 @@ export default class Flipbook {
 			0.1,
 			3000,
 		);
+		this.camera.position.set(0, 0, 2500);
+
+		// bottom view
+		this.camera.position.set(0, -1462, 441);
+		this.camera.rotation.set(1.27, 0, 0);
 
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -71,8 +106,6 @@ export default class Flipbook {
 		this.directionalLight.castShadow = true;
 		this.scene.add(this.directionalLight);
 
-		this.camera.position.set(0, 0, 2500);
-
 		// this.controls = new OrbitControls(
 		// 	this.camera,
 		// 	this.renderer.domElement,
@@ -82,67 +115,72 @@ export default class Flipbook {
 		this.scene.add(this.group);
 
 		// init spine
-		this.spineWidth = this.pages
-			.filter(page => page instanceof InnerPage)
-			.reduce((acc, page) => acc + page.rootThickness, 0);
-		this.spineZ = this.spineThickness / 2;
+		this.spineWidth =
+			this.pages
+				.filter(page => !page.isCover)
+				.reduce((acc, page) => acc + page.rootThickness, 0) +
+			this.coverThickness;
+		this.spineZ = this.coverThickness / 2;
 		this.spine1pos = new THREE.Vector3(
 			-this.spineWidth / 2,
 			0,
 			this.spineZ,
 		);
-		this.spine2pos = new THREE.Vector3(this.spineWidth / 2, 0, this.spineZ);
+		this.spine2pos = this.spine1pos.clone().setX(-this.spine1pos.x);
 
 		// init spine mesh
-		// TODO:
-		const spineTextureUrl = `https://picsum.photos/id/236/${this.spineWidth}/${this.spineHeight}`;
-		this.spineFrontTexture = new THREE.TextureLoader().load(
-			spineTextureUrl,
+		this.textures.spineInner = new THREE.TextureLoader().load(
+			this.textureUrls.spineInner,
 		);
-		this.spineBackTexture = new THREE.TextureLoader().load(spineTextureUrl);
-		this.spineEdgeTexture = new THREE.TextureLoader().load(spineTextureUrl);
+		this.textures.spineOuter = new THREE.TextureLoader().load(
+			this.textureUrls.spineOuter,
+		);
+		this.textures.spineEdgeLR = new THREE.TextureLoader().load(
+			this.textureUrls.spineEdgeLR,
+		);
+		this.textures.spineEdgeTB = new THREE.TextureLoader().load(
+			this.textureUrls.spineEdgeTB,
+		);
 		const spineMaterials = [
-			new THREE.MeshBasicMaterial({ map: this.spineEdgeTexture }), // right face
-			new THREE.MeshBasicMaterial({ map: this.spineEdgeTexture }), // left face
-			new THREE.MeshBasicMaterial({ map: this.spineEdgeTexture }), // top face
-			new THREE.MeshBasicMaterial({ map: this.spineEdgeTexture }), // bottom face
-			new THREE.MeshBasicMaterial({ map: this.spineFrontTexture }), // front face
-			new THREE.MeshBasicMaterial({ map: this.spineBackTexture }), // back face
+			new THREE.MeshBasicMaterial({ map: this.textures.spineEdgeLR }), // right face
+			new THREE.MeshBasicMaterial({ map: this.textures.spineEdgeLR }), // left face
+			new THREE.MeshBasicMaterial({ map: this.textures.spineEdgeTB }), // top face
+			new THREE.MeshBasicMaterial({ map: this.textures.spineEdgeTB }), // bottom face
+			new THREE.MeshBasicMaterial({ map: this.textures.spineInner }), // front face
+			new THREE.MeshBasicMaterial({ map: this.textures.spineOuter }), // back face
 		];
 		const spineGeometry = new THREE.BoxGeometry(
 			this.spineWidth,
-			this.spineHeight,
-			this.spineThickness,
+			this.pageHeight + this.coverMargin * 2,
+			this.coverThickness,
 		);
 		const spineMesh = new THREE.Mesh(spineGeometry, spineMaterials);
 		this.group.add(spineMesh);
 		spineMesh.position.z = this.spineZ;
 
 		// init pages
-		let spinePlacementOffset = -(this.spineWidth / 2);
+		let spinePlacementStart =
+			-(this.spineWidth / 2) + this.coverThickness / 2;
+		let spinePlacementShift = 0;
 		this.pages.forEach((page, index) => {
 			this.group.add(page.pivot);
 
-			if (page instanceof CoverPage) {
+			if (page.isCover) {
 				page.pivot.position.z = this.spineZ;
 				page.pivot.position.x =
-					index === 0
-						? this.spine1pos.x - page.rootThickness / 2
-						: this.spine2pos.x + page.rootThickness / 2;
-			}
-
-			if (page instanceof InnerPage) {
+					index === 0 ? this.spine1pos.x : this.spine2pos.x;
+			} else {
 				const elevationLeft =
-					spinePlacementOffset +
-					this.spineWidth / 2 +
-					page.rootThickness / 2;
+					spinePlacementShift + page.rootThickness / 2;
 				const elevationRight = this.spineWidth - elevationLeft;
 				page.setElevation(elevationLeft, elevationRight);
 
-				page.pivot.position.z = this.spineZ + this.spineThickness / 2;
+				page.pivot.position.z = this.spineZ + this.coverThickness / 2;
 				page.pivot.position.x =
-					spinePlacementOffset + page.rootThickness / 2;
-				spinePlacementOffset += page.rootThickness;
+					spinePlacementStart +
+					spinePlacementShift +
+					page.rootThickness / 2;
+				spinePlacementShift += page.rootThickness;
 			}
 		});
 
@@ -154,7 +192,7 @@ export default class Flipbook {
 		});
 		const deskMesh = new THREE.Mesh(deskGeometry, deskMaterial);
 		deskMesh.rotation.z = Math.PI / 2; // Ensure it's flat on the XY plane
-		deskMesh.position.z = -20;
+		deskMesh.position.z = -50;
 		this.scene.add(deskMesh);
 
 		// Add fps counter
@@ -320,7 +358,7 @@ export default class Flipbook {
 			} else if (index < Math.floor(this.progress)) {
 				tp = -bookOpenFactor;
 			} else {
-				if (page instanceof CoverPage) {
+				if (page.isCover) {
 					tp = index ? bookOpenFactor : -bookOpenFactor;
 				} else {
 					tp = (this.progress % 1) * -2 + 1;
@@ -340,35 +378,28 @@ export default class Flipbook {
 		});
 
 		// handle book rotation
-		let rotation = 0;
+		let bookAngle = 0;
 		if (this.progress < 1) {
-			rotation = 1 - this.progress;
+			bookAngle = 1 - this.progress;
+		} else if (this.progress > this.pages.length - 1) {
+			bookAngle = this.pages.length - 1 - this.progress;
 		}
-		if (this.progress > this.pages.length - 1) {
-			rotation = this.pages.length - 1 - this.progress;
-		}
-		this.group.rotation.y = (Math.PI / 2) * rotation;
+		bookAngle *= Math.PI / 2;
+		this.group.rotation.y = bookAngle;
 
 		// handle book rotation shift
-		// TODO: coverThickness
-		const shiftLeft = this.spineWidth / 2 + this.pages[0].rootThickness;
-		const shiftRight =
-			this.spineWidth / 2 +
-			this.pages[this.pages.length - 1].rootThickness;
-		if (rotation < 0) {
-			this.group.position.x =
-				(Math.cos(Math.PI * 0.5 * rotation) - 1) *
-				(shiftLeft - this.pages[0].rootThickness);
-		} else {
-			this.group.position.x =
-				(Math.sin(Math.PI * 1.5 + Math.PI * 0.5 * rotation) + 1) *
-				(shiftLeft - this.pages[0].rootThickness);
+		const pivot = new THREE.Vector3(
+			this.spineWidth / 2 + this.coverThickness / 2,
+			0,
+			this.coverThickness / 2,
+		);
+		if (bookAngle < 0) {
+			pivot.x = -pivot.x;
 		}
-		this.group.position.z =
-			Math.sin(Math.PI * 0.5 * Math.abs(rotation)) * shiftLeft;
-		console.log(this.group.position.x, this.group.position.z);
-		// const shiftX = Math.sin((Math.PI / 2) * rotation) * shiftLeft;
-		// this.group.position.x = shiftX;
+
+		const newPoint = rotateY(new THREE.Vector3(0, 0, 0), pivot, -bookAngle);
+		this.group.position.x = newPoint.x;
+		this.group.position.z = newPoint.z;
 
 		this.renderer.render(this.scene, this.camera);
 	}

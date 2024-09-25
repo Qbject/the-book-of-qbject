@@ -2,22 +2,21 @@ import * as THREE from "three";
 import {
 	approach,
 	bezierDirection,
-	clamp,
 	cubicBezier,
 	directionInRadians,
 	lerp,
 } from "./util";
 
-export default class InnerPage implements Page {
+export default class Page {
 	public frontUrl: string;
 	public backUrl: string;
 	public width: number;
 	public height: number;
-	public flexibility: number;
 	public thickness: number;
 	public rootThickness: number;
 	public elevationLeft = 0;
 	public elevationRight = 0;
+	public isCover = false;
 
 	public mesh: THREE.Mesh;
 	public frontTexture: THREE.Texture;
@@ -25,6 +24,7 @@ export default class InnerPage implements Page {
 	public edgeTexture: THREE.Texture;
 	public pivot: THREE.Group;
 
+	private turnProgress: number = 0;
 	private xSegments = 1;
 	private ySegments = 1;
 	private zSegments = 20;
@@ -49,17 +49,23 @@ export default class InnerPage implements Page {
 		},
 	];
 
-	constructor(pageParams: InnerPageParams) {
+	constructor(pageParams: PageParams) {
 		this.frontUrl = pageParams.frontUrl;
 		this.backUrl = pageParams.backUrl;
 		this.width = pageParams.width;
 		this.height = pageParams.height;
-		this.flexibility = pageParams.flexibility || 0;
 		this.thickness = pageParams.thickness || 2;
 		this.rootThickness = pageParams.rootThickness || 4;
+		this.isCover = !!pageParams.isCover;
 
-		if (this.flexibility === 0) {
-			this.xSegments = 1;
+		if (this.isCover) {
+			this.zSegments = 1;
+
+			const backShift = this.rootThickness / 2 / this.width;
+			this.controlPoints = this.controlPoints.map(cp => ({
+				...cp,
+				distance: cp.distance - backShift,
+			}));
 		}
 
 		// Load front and back textures
@@ -98,11 +104,6 @@ export default class InnerPage implements Page {
 				position.getY(i) / this.height + 0.5,
 				position.getZ(i) / this.width + 0.5,
 			);
-			console.log(
-				this.vertexRelCoords[i].x,
-				this.vertexRelCoords[i].y,
-				this.vertexRelCoords[i].z,
-			);
 		}
 		position.needsUpdate = true;
 	}
@@ -121,6 +122,7 @@ export default class InnerPage implements Page {
 				pointParams.distance *
 				this.width,
 		};
+		// TODO: p3 shouldn't be affected?
 		if (index === 2 || index === 3) {
 			point.z = Math.max(this.getElevation(), point.z);
 		}
@@ -129,7 +131,10 @@ export default class InnerPage implements Page {
 
 	public update(dt: number) {
 		// updating elevation
-		this.controlPoints[1].distance = this.getElevation() / this.width * 2;
+		if (!this.isCover) {
+			this.controlPoints[1].distance =
+				(this.getElevation() / this.width) * 2;
+		}
 
 		// updating bend
 		this.controlPoints[3].turnProgress = approach(
@@ -138,6 +143,11 @@ export default class InnerPage implements Page {
 			5,
 			dt,
 		);
+		// TODO: refactor PLEASE
+		if (this.isCover) {
+			this.controlPoints[0].turnProgress = this.controlPoints[1].turnProgress =
+				this.controlPoints[2].turnProgress;
+		}
 
 		const position = this.mesh.geometry.attributes.position;
 		for (let i = 0; i < position.count; i++) {
@@ -147,7 +157,8 @@ export default class InnerPage implements Page {
 				.map((cp, i) => this.calcControlPoint(cp, i))
 				.map(cp => new THREE.Vector2(cp.x, cp.z));
 
-			// console.log(JSON.stringify(controlPoints))
+			// this.isCover && console.log(JSON.stringify(this.controlPoints))
+			// this.isCover && console.log(JSON.stringify(controlPoints))
 
 			const pos = cubicBezier(
 				controlPoints[0],
@@ -183,9 +194,20 @@ export default class InnerPage implements Page {
 		}
 
 		position.needsUpdate = true;
+
+		// if (this.isCover) {
+		// 	this.mesh.updateMatrixWorld(true);
+		// 	const worldPosition = new THREE.Vector3();
+		// 	this.mesh.getWorldPosition(worldPosition);
+		// 	console.log(
+		// 		`Absolute Position: x = ${worldPosition.x}, y = ${worldPosition.y}, z = ${worldPosition.z}`,
+		// 	);
+		// }
 	}
 
 	public setTurnProgress(turnProgress: number) {
+		this.turnProgress = turnProgress;
+
 		this.controlPoints.forEach((cp, index) => {
 			if (index === 2) {
 				this.controlPoints[index] = {
@@ -196,21 +218,18 @@ export default class InnerPage implements Page {
 			if (index === 3) {
 				this.controlPoints[index] = {
 					...cp,
-					turnProgress: approach(
-						cp.turnProgress,
-						turnProgress,
-						0.1,
-						0.01,
-					),
+					turnProgress: this.isCover
+						? turnProgress
+						: approach(cp.turnProgress, turnProgress, 0.1, 0.01),
 				};
 			}
 		});
 	}
 
 	public setElevation(elevationLeft: number, elevationRight: number) {
+		if (this.isCover) return;
 		this.elevationLeft = elevationLeft;
 		this.elevationRight = elevationRight;
-		// this.controlPoints[1].distance = elevation / this.width;
 	}
 
 	public getElevation() {

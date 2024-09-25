@@ -59,6 +59,11 @@ export function lerp(a: number, b: number, t: number): number {
 	return a + (b - a) * t;
 }
 
+export function cosineInterpolate(a: number, b: number, t: number) {
+	const cosT = (1 - Math.cos(Math.PI * t)) / 2;
+	return a + (b - a) * cosT;
+}
+
 export function cubicBezier(
 	P0: THREE.Vector2,
 	P1: THREE.Vector2,
