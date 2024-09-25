@@ -14,7 +14,7 @@ export default class Flipbook {
 	private coverThickness: number;
 	private coverMargin: number;
 	private textureUrls;
-	
+
 	private pages: Page[] = [];
 	private group: THREE.Group;
 	private scene: THREE.Scene;
@@ -28,7 +28,7 @@ export default class Flipbook {
 	private spine2pos = new THREE.Vector3(0, 0, 0);
 	private spineWidth: number;
 	private spineZ: number;
-	
+
 	private controls: OrbitControls;
 	private stats;
 
@@ -91,14 +91,16 @@ export default class Flipbook {
 		this.camera = new THREE.PerspectiveCamera(
 			20,
 			window.innerWidth / window.innerHeight,
-			0.1,
+			2000,
 			3000,
 		);
 		this.camera.position.set(0, 0, 2500);
 
 		// bottom view
-		this.camera.position.set(0, -1462, 441);
-		this.camera.rotation.set(1.27, 0, 0);
+		// this.camera.position.set(0, -1462, 441);
+		// this.camera.rotation.set(1.27, 0, 0);
+		// this.camera.near = 1000;
+		// this.camera.updateProjectionMatrix();
 
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
