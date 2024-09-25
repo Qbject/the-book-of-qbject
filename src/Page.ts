@@ -29,6 +29,7 @@ export default class Page {
 	private ySegments = 1;
 	private zSegments = 20;
 	private vertexRelCoords: THREE.Vector3[] = [];
+	public bendingEnabled: boolean = true;
 
 	private controlPoints: PageControlPointParams[] = [
 		{
@@ -145,8 +146,9 @@ export default class Page {
 		);
 		// TODO: refactor PLEASE
 		if (this.isCover) {
-			this.controlPoints[0].turnProgress = this.controlPoints[1].turnProgress =
-				this.controlPoints[2].turnProgress;
+			this.controlPoints[0].turnProgress =
+				this.controlPoints[1].turnProgress =
+					this.controlPoints[2].turnProgress;
 		}
 
 		const position = this.mesh.geometry.attributes.position;
@@ -218,7 +220,7 @@ export default class Page {
 			if (index === 3) {
 				this.controlPoints[index] = {
 					...cp,
-					turnProgress: this.isCover
+					turnProgress: (this.isCover || !this.bendingEnabled)
 						? turnProgress
 						: approach(cp.turnProgress, turnProgress, 0.1, 0.01),
 				};

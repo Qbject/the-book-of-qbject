@@ -352,6 +352,9 @@ export default class Flipbook {
 		);
 
 		this.pages.forEach((page, index) => {
+			// toggle bend
+			page.bendingEnabled = bookOpenFactor === 1;
+
 			let tp;
 			if (index >= this.progress) {
 				tp = bookOpenFactor;
@@ -366,9 +369,7 @@ export default class Flipbook {
 			}
 
 			page.setTurnProgress(tp);
-		});
 
-		this.pages.forEach((page, index) => {
 			// TODO: remove?
 			// updating renderOrder
 			page.mesh.renderOrder =
