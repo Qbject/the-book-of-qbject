@@ -115,8 +115,8 @@ export default class Flipbook {
 			this.spineThickness,
 		);
 		const spineMesh = new THREE.Mesh(spineGeometry, spineMaterials);
-		spineMesh.position.z = this.spineZ;
 		this.group.add(spineMesh);
+		spineMesh.position.z = this.spineZ;
 
 		// init pages
 		let spinePlacementOffset = -(this.spineWidth / 2);
@@ -260,8 +260,6 @@ export default class Flipbook {
 	private update(dt: number) {
 		if (!dt) return;
 
-		// this.updateSpine();
-
 		if (this.curDrag) {
 			const deltaX = this.curDrag.x - this.curDrag.prevX;
 			this.curDrag.prevX = this.curDrag.x;
@@ -337,11 +335,40 @@ export default class Flipbook {
 			// updating renderOrder
 			page.mesh.renderOrder =
 				this.pages.length - Math.abs(this.progress - 0.5 - index);
-			console.log(index, page.mesh.renderOrder);
 
-			// page.update(deltaTime);
 			page.update(dt);
 		});
+
+		// handle book rotation
+		let rotation = 0;
+		if (this.progress < 1) {
+			rotation = 1 - this.progress;
+		}
+		if (this.progress > this.pages.length - 1) {
+			rotation = this.pages.length - 1 - this.progress;
+		}
+		this.group.rotation.y = (Math.PI / 2) * rotation;
+
+		// handle book rotation shift
+		// TODO: coverThickness
+		const shiftLeft = this.spineWidth / 2 + this.pages[0].rootThickness;
+		const shiftRight =
+			this.spineWidth / 2 +
+			this.pages[this.pages.length - 1].rootThickness;
+		if (rotation < 0) {
+			this.group.position.x =
+				(Math.cos(Math.PI * 0.5 * rotation) - 1) *
+				(shiftLeft - this.pages[0].rootThickness);
+		} else {
+			this.group.position.x =
+				(Math.sin(Math.PI * 1.5 + Math.PI * 0.5 * rotation) + 1) *
+				(shiftLeft - this.pages[0].rootThickness);
+		}
+		this.group.position.z =
+			Math.sin(Math.PI * 0.5 * Math.abs(rotation)) * shiftLeft;
+		console.log(this.group.position.x, this.group.position.z);
+		// const shiftX = Math.sin((Math.PI / 2) * rotation) * shiftLeft;
+		// this.group.position.x = shiftX;
 
 		this.renderer.render(this.scene, this.camera);
 	}

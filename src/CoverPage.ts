@@ -79,5 +79,12 @@ export default class CoverPage implements Page {
 	public update() {
 		// update rotation
 		this.pivot.rotation.y = (Math.PI / 2) * this.turnProgress;
+
+		this.mesh.updateMatrixWorld(true);
+		const worldPosition = new THREE.Vector3();
+		this.mesh.getWorldPosition(worldPosition);
+		console.log(
+			`Absolute Position: x = ${worldPosition.x}, y = ${worldPosition.y}, z = ${worldPosition.z}`,
+		);
 	}
 }
