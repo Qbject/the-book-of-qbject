@@ -84,8 +84,8 @@ export default class Page {
 		);
 
 		const materials = [
-			new THREE.MeshBasicMaterial({ map: this.frontTexture }), // right face
-			new THREE.MeshBasicMaterial({ map: this.backTexture }), // left face
+			new THREE.MeshBasicMaterial({ map: this.backTexture }), // right face
+			new THREE.MeshBasicMaterial({ map: this.frontTexture }), // left face
 			new THREE.MeshBasicMaterial({ map: this.edgeTexture }), // top face
 			new THREE.MeshBasicMaterial({ map: this.edgeTexture }), // bottom face
 			new THREE.MeshBasicMaterial({ map: this.edgeTexture }), // front face
