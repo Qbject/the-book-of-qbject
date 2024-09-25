@@ -70,7 +70,7 @@ export default class Flipbook {
 				new Page({
 					textureUrls: {
 						front: this.textureUrls.pages[i * 2],
-						back: this.textureUrls.pages[i * 2],
+						back: this.textureUrls.pages[i * 2 + 1],
 						edgeLR: this.textureUrls.coverEdgeLR,
 						edgeTB: this.textureUrls.coverEdgeTB,
 					},
@@ -97,10 +97,10 @@ export default class Flipbook {
 		this.camera.position.set(0, 0, 2500);
 
 		// bottom view
-		// this.camera.position.set(0, -1462, 441);
-		// this.camera.rotation.set(1.27, 0, 0);
-		// this.camera.near = 1000;
-		// this.camera.updateProjectionMatrix();
+		this.camera.position.set(0, -1462, 441);
+		this.camera.rotation.set(1.27, 0, 0);
+		this.camera.near = 1000;
+		this.camera.updateProjectionMatrix();
 
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
