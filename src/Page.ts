@@ -68,13 +68,18 @@ export default class Page {
 		const uv = geometry.attributes.uv;
 
 		for (let i = 0; i < position.count; i++) {
-			this.vertexRelCoords[i] = new THREE.Vector3(
+			const coord = new THREE.Vector3(
 				position.getX(i) / this.thickness + 0.5,
 				position.getY(i) / this.height + 0.5,
 				cosineInterpolate(0, 1, position.getZ(i) / this.width + 0.5),
 			);
+			this.vertexRelCoords[i] = coord;
 
-			uv.setXY(i, this.vertexRelCoords[i].z, this.vertexRelCoords[i].y);
+			let uvX = this.vertexRelCoords[i].z;
+			if (coord.x > 0.5) {
+				uvX = 1 - uvX;
+			}
+			uv.setXY(i, uvX, coord.y);
 		}
 
 		position.needsUpdate = true;
