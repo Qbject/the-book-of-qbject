@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { approach, directionInRadians, lerp } from "./util";
+import { approach, cosineInterpolate, vectorToRadians, lerp } from "./util";
 
 export default class Page {
 	public textureUrls;
@@ -80,7 +80,6 @@ export default class Page {
 			const backShift = this.rootThickness / 2;
 			const angle = (-this.turnProgress + 1) * (Math.PI / 2);
 
-			// Calculate the normalized direction vector
 			const direction = new THREE.Vector2(
 				Math.cos(angle),
 				Math.sin(angle),
@@ -100,14 +99,23 @@ export default class Page {
 
 			return new THREE.QuadraticBezierCurve(p0, p1, p2);
 		} else {
+			const elevationShift =
+				cosineInterpolate(
+					0,
+					this.turnProgress > 0
+						? this.elevationRight
+						: this.elevationLeft,
+					Math.abs(this.turnProgress) * 0.5,
+				) * 2;
+
 			const calc = (tp: number, dist: number) =>
 				new THREE.Vector2(
 					Math.sin(tp * (Math.PI / 2)) * dist,
-					Math.cos(tp * (Math.PI / 2)) * dist,
+					Math.cos(tp * (Math.PI / 2)) * dist + elevationShift,
 				);
 
 			const p0 = new THREE.Vector2();
-			const p1 = calc(0, this.getElevation() / 2);
+			const p1 = new THREE.Vector2(0, elevationShift * 1.5);
 			const p2 = calc(this.turnProgress, this.width * 0.5);
 			const p3 = calc(this.turnProgressLag, this.width);
 
@@ -123,12 +131,6 @@ export default class Page {
 			dt,
 		);
 
-		// // updating elevation
-		// if (!this.isCover) {
-		// 	this.controlPoints[1].distance =
-		// 		(this.getElevation() / this.width) * 2;
-		// }
-
 		const curve = this.getCurve();
 
 		const position = this.mesh.geometry.attributes.position;
@@ -137,7 +139,7 @@ export default class Page {
 
 			const pos = curve.getPoint(relCoord.z);
 			const direction =
-				directionInRadians(curve.getTangent(relCoord.z)) + Math.PI / 2;
+				vectorToRadians(curve.getTangent(relCoord.z)) + Math.PI / 2;
 
 			const thickness = lerp(
 				this.rootThickness,
@@ -166,8 +168,8 @@ export default class Page {
 
 	public setTurnProgress(turnProgress: number) {
 		if (!this.bendingEnabled) {
-			const delta = this.turnProgress - turnProgress;
-			this.turnProgressLag -= delta;
+			const delta = turnProgress - this.turnProgress;
+			this.turnProgressLag += delta;
 		}
 		this.turnProgress = turnProgress;
 	}

@@ -44,6 +44,7 @@ export default class Flipbook {
 		grabbedPageIndex: number;
 		inertia: number;
 	};
+	private lastGrabbedPageIndex?: number;
 
 	constructor(params: FlipBookParams) {
 		this.containerEl = params.containerEl;
@@ -180,7 +181,8 @@ export default class Flipbook {
 			} else {
 				const elevationLeft =
 					spinePlacementShift + page.rootThickness / 2;
-				const elevationRight = this.spineWidth - elevationLeft;
+				const elevationRight =
+					this.spineWidth - this.coverThickness - elevationLeft;
 				page.setElevation(elevationLeft, elevationRight);
 
 				page.pivot.position.z = this.spineZ + this.coverThickness / 2;
@@ -322,6 +324,7 @@ export default class Flipbook {
 					),
 					inertia: 0,
 				};
+				this.lastGrabbedPageIndex = this.curTurn.grabbedPageIndex;
 			}
 
 			// updating inertia
@@ -373,17 +376,19 @@ export default class Flipbook {
 				}
 			}
 
-			page.setTurnProgress(tp);
-
 			// TODO: remove?
 			// updating renderOrder
 			page.mesh.renderOrder =
 				this.pages.length - Math.abs(this.progress - 0.5 - index);
 
-			page.update(dt);
-
 			// toggle bend
-			page.bendingEnabled = bookOpenFactor === 1;
+			page.bendingEnabled = !(
+				this.lastGrabbedPageIndex !== undefined &&
+				this.pages[this.lastGrabbedPageIndex].isCover
+			);
+
+			page.setTurnProgress(tp);
+			page.update(dt);
 		});
 
 		// handle book rotation
