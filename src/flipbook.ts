@@ -202,7 +202,7 @@ export default class Flipbook {
 		});
 		const deskMesh = new THREE.Mesh(deskGeometry, deskMaterial);
 		deskMesh.rotation.z = Math.PI / 2; // Ensure it's flat on the XY plane
-		deskMesh.position.z = -50;
+		deskMesh.position.z = 0;
 		this.scene.add(deskMesh);
 
 		// Add fps counter

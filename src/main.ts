@@ -46,7 +46,9 @@ document.addEventListener("DOMContentLoaded", () => {
 			},
 			pageWidth: 445,
 			pageHeight: 720,
-			coverThickness: 5,
+			coverThickness: 4,
+			pageRootThickness: 4,
+			pageThickness: 2,
 		});
 	} else {
 		console.error("No container element found");
