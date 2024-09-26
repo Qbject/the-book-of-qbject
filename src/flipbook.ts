@@ -360,9 +360,6 @@ export default class Flipbook {
 		);
 
 		this.pages.forEach((page, index) => {
-			// toggle bend
-			page.bendingEnabled = bookOpenFactor === 1;
-
 			let tp;
 			if (index >= this.progress) {
 				tp = bookOpenFactor;
@@ -384,6 +381,9 @@ export default class Flipbook {
 				this.pages.length - Math.abs(this.progress - 0.5 - index);
 
 			page.update(dt);
+
+			// toggle bend
+			page.bendingEnabled = bookOpenFactor === 1;
 		});
 
 		// handle book rotation
@@ -398,7 +398,7 @@ export default class Flipbook {
 
 		// handle book rotation shift
 		const pivot = new THREE.Vector3(
-			this.spineWidth / 2 + this.coverThickness / 2,
+			this.spineWidth / 2,
 			0,
 			this.coverThickness / 2,
 		);

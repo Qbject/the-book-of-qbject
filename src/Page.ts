@@ -1,11 +1,5 @@
 import * as THREE from "three";
-import {
-	approach,
-	bezierDirection,
-	cubicBezier,
-	directionInRadians,
-	lerp,
-} from "./util";
+import { approach, directionInRadians, lerp } from "./util";
 
 export default class Page {
 	public textureUrls;
@@ -21,30 +15,12 @@ export default class Page {
 	public pivot: THREE.Group;
 
 	private turnProgress: number = 0;
+	private turnProgressLag: number = 0;
 	private xSegments = 1;
 	private ySegments = 1;
 	private zSegments = 20;
 	private vertexRelCoords: THREE.Vector3[] = [];
 	public bendingEnabled: boolean = true;
-
-	private controlPoints: PageControlPointParams[] = [
-		{
-			turnProgress: 0,
-			distance: 0,
-		},
-		{
-			turnProgress: 0,
-			distance: 0.25,
-		},
-		{
-			turnProgress: 0,
-			distance: 0.5,
-		},
-		{
-			turnProgress: 0,
-			distance: 1,
-		},
-	];
 
 	constructor(pageParams: PageParams) {
 		this.textureUrls = pageParams.textureUrls;
@@ -56,12 +32,6 @@ export default class Page {
 
 		if (this.isCover) {
 			this.zSegments = 1;
-
-			const backShift = this.rootThickness / 2 / this.width;
-			this.controlPoints = this.controlPoints.map(cp => ({
-				...cp,
-				distance: cp.distance - backShift,
-			}));
 		}
 
 		// Load front and back textures
@@ -105,78 +75,69 @@ export default class Page {
 		position.needsUpdate = true;
 	}
 
-	private calcControlPoint(
-		pointParams: PageControlPointParams,
-		index: number,
-	): PageControlPoint {
-		const point = {
-			x:
-				Math.sin(pointParams.turnProgress * (Math.PI / 2)) *
-				pointParams.distance *
-				this.width,
-			z:
-				Math.cos(pointParams.turnProgress * (Math.PI / 2)) *
-				pointParams.distance *
-				this.width,
-		};
-		// TODO: p3 shouldn't be affected?
-		if (index === 2 || index === 3) {
-			point.z = Math.max(this.getElevation(), point.z);
+	private getCurve() {
+		if (this.isCover) {
+			const backShift = this.rootThickness / 2;
+			const angle = (-this.turnProgress + 1) * (Math.PI / 2);
+
+			// Calculate the normalized direction vector
+			const direction = new THREE.Vector2(
+				Math.cos(angle),
+				Math.sin(angle),
+			);
+
+			const p0 = new THREE.Vector2().addScaledVector(
+				direction,
+				-backShift,
+			);
+			const p2 = new THREE.Vector2().addScaledVector(
+				direction,
+				this.width - backShift,
+			);
+			const p1 = new THREE.Vector2()
+				.addVectors(p0, p2)
+				.multiplyScalar(0.5);
+
+			return new THREE.QuadraticBezierCurve(p0, p1, p2);
+		} else {
+			const calc = (tp: number, dist: number) =>
+				new THREE.Vector2(
+					Math.sin(tp * (Math.PI / 2)) * dist,
+					Math.cos(tp * (Math.PI / 2)) * dist,
+				);
+
+			const p0 = new THREE.Vector2();
+			const p1 = calc(0, this.getElevation() / 2);
+			const p2 = calc(this.turnProgress, this.width * 0.5);
+			const p3 = calc(this.turnProgressLag, this.width);
+
+			return new THREE.CubicBezierCurve(p0, p1, p2, p3);
 		}
-		return point;
 	}
 
 	public update(dt: number) {
-		// updating elevation
-		if (!this.isCover) {
-			this.controlPoints[1].distance =
-				(this.getElevation() / this.width) * 2;
-		}
-
-		// updating bend
-		this.controlPoints[3].turnProgress = approach(
-			this.controlPoints[3].turnProgress,
-			this.controlPoints[2].turnProgress,
-			5,
+		this.turnProgressLag = approach(
+			this.turnProgressLag,
+			this.turnProgress,
+			this.bendingEnabled ? 5 : 25,
 			dt,
 		);
-		// TODO: refactor PLEASE
-		if (this.isCover) {
-			this.controlPoints[0].turnProgress =
-				this.controlPoints[1].turnProgress =
-					this.controlPoints[2].turnProgress;
-		}
+
+		// // updating elevation
+		// if (!this.isCover) {
+		// 	this.controlPoints[1].distance =
+		// 		(this.getElevation() / this.width) * 2;
+		// }
+
+		const curve = this.getCurve();
 
 		const position = this.mesh.geometry.attributes.position;
 		for (let i = 0; i < position.count; i++) {
 			const relCoord = this.vertexRelCoords[i];
 
-			const controlPoints = this.controlPoints
-				.map((cp, i) => this.calcControlPoint(cp, i))
-				.map(cp => new THREE.Vector2(cp.x, cp.z));
-
-			// this.isCover && console.log(JSON.stringify(this.controlPoints))
-			// this.isCover && console.log(JSON.stringify(controlPoints))
-
-			const pos = cubicBezier(
-				controlPoints[0],
-				controlPoints[1],
-				controlPoints[2],
-				controlPoints[3],
-				relCoord.z,
-			);
-
+			const pos = curve.getPoint(relCoord.z);
 			const direction =
-				directionInRadians(
-					bezierDirection(
-						controlPoints[0],
-						controlPoints[1],
-						controlPoints[2],
-						controlPoints[3],
-						relCoord.z,
-					),
-				) +
-				Math.PI / 2;
+				directionInRadians(curve.getTangent(relCoord.z)) + Math.PI / 2;
 
 			const thickness = lerp(
 				this.rootThickness,
@@ -204,30 +165,11 @@ export default class Page {
 	}
 
 	public setTurnProgress(turnProgress: number) {
+		if (!this.bendingEnabled) {
+			const delta = this.turnProgress - turnProgress;
+			this.turnProgressLag -= delta;
+		}
 		this.turnProgress = turnProgress;
-
-		this.controlPoints.forEach((cp, index) => {
-			if (index === 2) {
-				this.controlPoints[index] = {
-					...cp,
-					turnProgress,
-				};
-			}
-			if (index === 3) {
-				this.controlPoints[index] = {
-					...cp,
-					turnProgress:
-						this.isCover || !this.bendingEnabled
-							? turnProgress
-							: approach(
-									cp.turnProgress,
-									turnProgress,
-									0.1,
-									0.01,
-								),
-				};
-			}
-		});
 	}
 
 	public setElevation(elevationLeft: number, elevationRight: number) {
@@ -237,7 +179,7 @@ export default class Page {
 	}
 
 	public getElevation() {
-		const turnProgress = this.controlPoints[2].turnProgress + 1 / 2;
+		const turnProgress = this.turnProgress + 1 / 2;
 		return lerp(this.elevationLeft, this.elevationRight, turnProgress);
 	}
 }
