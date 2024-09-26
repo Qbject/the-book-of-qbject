@@ -65,14 +65,20 @@ export default class Page {
 		this.pivot.add(this.mesh);
 
 		const position = geometry.attributes.position;
+		const uv = geometry.attributes.uv;
+
 		for (let i = 0; i < position.count; i++) {
 			this.vertexRelCoords[i] = new THREE.Vector3(
 				position.getX(i) / this.thickness + 0.5,
 				position.getY(i) / this.height + 0.5,
-				position.getZ(i) / this.width + 0.5,
+				cosineInterpolate(0, 1, position.getZ(i) / this.width + 0.5),
 			);
+
+			uv.setXY(i, this.vertexRelCoords[i].z, this.vertexRelCoords[i].y);
 		}
+
 		position.needsUpdate = true;
+		uv.needsUpdate = true;
 	}
 
 	private getCurve() {
@@ -132,12 +138,14 @@ export default class Page {
 		);
 
 		const curve = this.getCurve();
+		const curveStretch = Math.max(curve.getLength() / this.width, 1);
 
 		const position = this.mesh.geometry.attributes.position;
 		for (let i = 0; i < position.count; i++) {
 			const relCoord = this.vertexRelCoords[i];
 
-			const pos = curve.getPoint(relCoord.z);
+			const pos = curve.getPointAt(relCoord.z * (1 / curveStretch));
+			// const pos = curve.getPoint(relCoord.z * (1 / curveStretch));
 			const direction =
 				vectorToRadians(curve.getTangent(relCoord.z)) + Math.PI / 2;
 
@@ -155,15 +163,6 @@ export default class Page {
 		}
 
 		position.needsUpdate = true;
-
-		// if (this.isCover) {
-		// 	this.mesh.updateMatrixWorld(true);
-		// 	const worldPosition = new THREE.Vector3();
-		// 	this.mesh.getWorldPosition(worldPosition);
-		// 	console.log(
-		// 		`Absolute Position: x = ${worldPosition.x}, y = ${worldPosition.y}, z = ${worldPosition.z}`,
-		// 	);
-		// }
 	}
 
 	public setTurnProgress(turnProgress: number) {

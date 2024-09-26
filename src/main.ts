@@ -17,7 +17,8 @@ document.addEventListener("DOMContentLoaded", () => {
 				pages: [
 					"https://picsum.photos/id/110/445/720",
 					"https://picsum.photos/id/111/445/720",
-					"https://picsum.photos/id/120/445/720",
+					// "https://picsum.photos/id/120/445/720",
+					"/img/line.png",
 					"https://picsum.photos/id/121/445/720",
 					"https://picsum.photos/id/122/445/720",
 					"https://picsum.photos/id/123/445/720",
