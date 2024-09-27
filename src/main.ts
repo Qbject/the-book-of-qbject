@@ -13,13 +13,14 @@ document.addEventListener("DOMContentLoaded", () => {
 	if (containerEl) {
 		window.flipbook = new Flipbook({
 			containerEl,
-			textures: {
+			textureUrls: {
 				pages: [
 					"https://picsum.photos/id/110/445/720",
 					"https://picsum.photos/id/111/445/720",
 					// "https://picsum.photos/id/120/445/720",
 					"/img/line.png",
-					"https://picsum.photos/id/121/445/720",
+					// "https://picsum.photos/id/121/445/720",
+					"/img/page.jpg",
 					"https://picsum.photos/id/122/445/720",
 					"https://picsum.photos/id/123/445/720",
 					"https://picsum.photos/id/124/445/720",
@@ -37,13 +38,14 @@ document.addEventListener("DOMContentLoaded", () => {
 					"https://picsum.photos/id/136/445/720",
 					"https://picsum.photos/id/139/445/720",
 				],
-				spineInner: "https://picsum.photos/id/236/32/32",
-				spineOuter: "https://picsum.photos/id/236/32/32",
-				coverEdgeTB: "https://picsum.photos/id/236/32/32",
-				coverEdgeLR: "https://picsum.photos/id/236/32/32",
-				spineEdgeTB: "https://picsum.photos/id/236/32/32",
-				spineEdgeLR: "https://picsum.photos/id/236/32/32",
+				spineInner: "https://picsum.photos/id/140/445/720",
+				spineOuter: "https://picsum.photos/id/140/445/720",
+				coverEdgeTB: "/img/edgeRainbow.png",
+				coverEdgeLR: "/img/edgeRainbow.png",
+				spineEdgeTB: "/img/edgeRainbow.png",
+				spineEdgeLR: "/img/edgeRainbow.png",
 			},
+			pageEdgeColor: 0xdddddd,
 			pageWidth: 445,
 			pageHeight: 720,
 			coverThickness: 4,

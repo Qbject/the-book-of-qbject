@@ -16,6 +16,7 @@ export default class Page {
 	public elevationLeft = 0;
 	public elevationRight = 0;
 	public isCover = false;
+	public edgeColor = 0xffffff;
 
 	public mesh: THREE.Mesh;
 	public pivot: THREE.Group;
@@ -35,25 +36,47 @@ export default class Page {
 		this.thickness = pageParams.thickness || 2;
 		this.rootThickness = pageParams.rootThickness || 4;
 		this.isCover = !!pageParams.isCover;
+		this.edgeColor = pageParams.edgeColor || 0xffffff;
 
 		if (this.isCover) {
 			this.zSegments = 1;
 		}
 
 		// Load front and back textures
-		const textures = {
-			front: new THREE.TextureLoader().load(this.textureUrls.front),
-			back: new THREE.TextureLoader().load(this.textureUrls.back),
-			edgeLR: new THREE.TextureLoader().load(this.textureUrls.edgeLR),
-			edgeTB: new THREE.TextureLoader().load(this.textureUrls.edgeTB),
+		const _texture = (url: string) => ({
+			map: new THREE.TextureLoader().load(url),
+		});
+		const _color = (hex: number) => ({
+			color: new THREE.Color(hex),
+		});
+		const textures: Record<
+			string,
+			{ map?: THREE.Texture; color?: THREE.Color }
+		> = {
+			front: _texture(this.textureUrls.front),
+			back: _texture(this.textureUrls.back),
+			edgeTop: _color(this.edgeColor),
+			edgeBottom: _color(this.edgeColor),
+			edgeLeft: _color(this.edgeColor),
+			edgeRight: _color(this.edgeColor),
 		};
+
+		if (this.textureUrls.edgeTB) {
+			textures.edgeTop = _texture(this.textureUrls.edgeTB);
+			textures.edgeBottom = _texture(this.textureUrls.edgeTB);
+		}
+		if (this.textureUrls.edgeLR) {
+			textures.edgeLeft = _texture(this.textureUrls.edgeLR);
+			textures.edgeRight = _texture(this.textureUrls.edgeLR);
+		}
+
 		const materials = [
-			new THREE.MeshBasicMaterial({ map: textures.back }), // right face
-			new THREE.MeshBasicMaterial({ map: textures.front }), // left face
-			new THREE.MeshBasicMaterial({ map: textures.edgeTB }), // top face
-			new THREE.MeshBasicMaterial({ map: textures.edgeTB }), // bottom face
-			new THREE.MeshBasicMaterial({ map: textures.edgeLR }), // front face
-			new THREE.MeshBasicMaterial({ map: textures.edgeLR }), // back face
+			new THREE.MeshBasicMaterial(textures.back),
+			new THREE.MeshBasicMaterial(textures.front),
+			new THREE.MeshBasicMaterial(textures.edgeTop),
+			new THREE.MeshBasicMaterial(textures.edgeBottom),
+			new THREE.MeshBasicMaterial(textures.edgeRight),
+			new THREE.MeshBasicMaterial(textures.edgeLeft),
 		];
 
 		const geometry = new THREE.BoxGeometry(
@@ -83,15 +106,14 @@ export default class Page {
 				position.getY(i) / this.height + 0.5,
 				position.getZ(i) / this.width + 0.5,
 			);
-			// increase vertex density closer to the spine for better bending
-			coord.z = cosineInterpolate(0, 2, coord.z / 2);
-			this.vertexRelCoords[i] = coord;
 
-			let uvX = this.vertexRelCoords[i].z;
-			if (coord.x > 0.5) {
-				uvX = 1 - uvX;
+			if (!this.isCover) {
+				// increase vertex density closer to the spine for better bending
+				coord.z = cosineInterpolate(0, 2, coord.z / 2);
+				uv.setXY(i, coord.x > 0.5 ? 1 - coord.z : coord.z, coord.y);
 			}
-			uv.setXY(i, uvX, coord.y);
+
+			this.vertexRelCoords[i] = coord;
 		}
 
 		position.needsUpdate = true;

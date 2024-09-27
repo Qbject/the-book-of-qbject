@@ -6,7 +6,8 @@ type FlipBookParams = {
 	pageRootThickness?: number;
 	coverThickness?: number;
 	coverMargin?: number;
-	textures: {
+	pageEdgeColor: number;
+	textureUrls: {
 		pages: string[];
 		spineInner: string;
 		spineOuter: string;
@@ -21,9 +22,10 @@ type PageParams = {
 	textureUrls: {
 		front: string;
 		back: string;
-		edgeLR: string;
-		edgeTB: string;
+		edgeLR?: string;
+		edgeTB?: string;
 	};
+	edgeColor: number;
 	width: number;
 	height: number;
 	thickness?: number;

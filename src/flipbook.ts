@@ -14,6 +14,7 @@ export default class Flipbook {
 	private coverThickness: number;
 	private coverMargin: number;
 	private textureUrls;
+	private pageEdgeColor: number;
 
 	private pages: Page[] = [];
 	private group: THREE.Group;
@@ -54,7 +55,8 @@ export default class Flipbook {
 		this.pageRootThickness = params.pageRootThickness || 4;
 		this.coverThickness = params.coverThickness || 5;
 		this.coverMargin = params.coverMargin || 8;
-		this.textureUrls = params.textures;
+		this.textureUrls = params.textureUrls;
+		this.pageEdgeColor = params.pageEdgeColor;
 
 		// add pages
 		const totalPages = Math.ceil(this.textureUrls.pages.length / 2);
@@ -67,13 +69,18 @@ export default class Flipbook {
 				? this.pageHeight + this.coverMargin * 2
 				: this.pageHeight;
 
+			const edgeTextures: Record<string, string> = {};
+			if (isCover) {
+				edgeTextures.edgeLR = this.textureUrls.coverEdgeLR;
+				edgeTextures.edgeTB = this.textureUrls.coverEdgeTB;
+			}
+
 			this.pages.push(
 				new Page({
 					textureUrls: {
 						front: this.textureUrls.pages[i * 2],
 						back: this.textureUrls.pages[i * 2 + 1],
-						edgeLR: this.textureUrls.coverEdgeLR,
-						edgeTB: this.textureUrls.coverEdgeTB,
+						...edgeTextures,
 					},
 					width,
 					height,
@@ -84,6 +91,7 @@ export default class Flipbook {
 						? this.coverThickness
 						: this.pageRootThickness,
 					isCover,
+					edgeColor: this.pageEdgeColor,
 				}),
 			);
 		}
@@ -98,10 +106,10 @@ export default class Flipbook {
 		this.camera.position.set(0, 0, 2500);
 
 		// bottom view
-		this.camera.position.set(0, -1462, 441);
-		this.camera.rotation.set(1.27, 0, 0);
-		this.camera.near = 1000;
-		this.camera.updateProjectionMatrix();
+		// this.camera.position.set(0, -1462, 441);
+		// this.camera.rotation.set(1.27, 0, 0);
+		// this.camera.near = 1000;
+		// this.camera.updateProjectionMatrix();
 
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
