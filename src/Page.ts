@@ -1,5 +1,11 @@
 import * as THREE from "three";
-import { approach, cosineInterpolate, vectorToRadians, lerp } from "./util";
+import {
+	approach,
+	cosineInterpolate,
+	vectorToRadians,
+	lerp,
+	clamp,
+} from "./util";
 
 export default class Page {
 	public textureUrls;
@@ -144,9 +150,15 @@ export default class Page {
 	}
 
 	public update(dt: number) {
+		// straighten
+		let straightenTarget = this.turnProgress;
+		if (this.bendingEnabled) {
+			// gravity bend
+			straightenTarget = clamp(straightenTarget * 1.1, -1, 1);
+		}
 		this.turnProgressLag = approach(
 			this.turnProgressLag,
-			this.turnProgress,
+			straightenTarget,
 			this.bendingEnabled ? 5 : 25,
 			dt,
 		);
