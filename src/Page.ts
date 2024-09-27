@@ -60,6 +60,10 @@ export default class Page {
 		);
 
 		this.mesh = new THREE.Mesh(geometry, materials);
+		// this.mesh = new THREE.Mesh(
+		// 	geometry,
+		// 	new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true }),
+		// );
 
 		this.pivot = new THREE.Group();
 		this.pivot.add(this.mesh);
@@ -71,8 +75,10 @@ export default class Page {
 			const coord = new THREE.Vector3(
 				position.getX(i) / this.thickness + 0.5,
 				position.getY(i) / this.height + 0.5,
-				cosineInterpolate(0, 1, position.getZ(i) / this.width + 0.5),
+				position.getZ(i) / this.width + 0.5,
 			);
+			// increase vertex density closer to the spine for better bending
+			coord.z = cosineInterpolate(0, 2, coord.z / 2);
 			this.vertexRelCoords[i] = coord;
 
 			let uvX = this.vertexRelCoords[i].z;
