@@ -132,7 +132,10 @@ export default class Page {
 				);
 
 			const p0 = new THREE.Vector2();
-			const p1 = new THREE.Vector2(0, elevationShift * 1.5);
+			const p1 = new THREE.Vector2(
+				0,
+				elevationShift * 2 + 20 * Math.abs(this.turnProgress),
+			);
 			const p2 = calc(this.turnProgress, this.width * 0.5);
 			const p3 = calc(this.turnProgressLag, this.width);
 
