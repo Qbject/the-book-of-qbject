@@ -22,7 +22,8 @@ export default class Flipbook {
 	private camera: THREE.PerspectiveCamera;
 	private renderer: THREE.WebGLRenderer;
 	private spineMesh: THREE.Mesh;
-	private directionalLight: THREE.DirectionalLight;
+	private spotLight: THREE.SpotLight;
+	private ambientLight: THREE.AmbientLight;
 
 	private progress = 0;
 	private spine1pos = new THREE.Vector3(0, 0, 0);
@@ -106,20 +107,39 @@ export default class Flipbook {
 		this.camera.position.set(0, 0, 2500);
 
 		// bottom view
-		// this.camera.position.set(0, -1462, 441);
-		// this.camera.rotation.set(1.27, 0, 0);
-		// this.camera.near = 1000;
-		// this.camera.updateProjectionMatrix();
+		this.camera.position.set(0, -1462, 441);
+		this.camera.rotation.set(1.27, 0, 0);
+		this.camera.near = 1000;
+		this.camera.updateProjectionMatrix();
 
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
+		this.renderer.shadowMap.enabled = true;
+		this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 		this.renderer.domElement.classList.add("flipbook-canvas");
 		this.containerEl.appendChild(this.renderer.domElement);
 
-		this.directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-		this.directionalLight.position.set(0, 0, 2500);
-		this.directionalLight.castShadow = true;
-		this.scene.add(this.directionalLight);
+		this.ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+		this.scene.add(this.ambientLight);
+
+		this.spotLight = new THREE.SpotLight(0xffffff, 2000000, 0, 0.6, 0.2);
+		this.spotLight.position.set(100, 300, 1000);
+		this.spotLight.lookAt(new THREE.Vector3());
+		this.spotLight.castShadow = true;
+		this.spotLight.shadow.bias = -0.0001;
+		this.spotLight.shadow.camera.near = 500;
+		this.spotLight.shadow.camera.far = 2000;
+		this.spotLight.shadow.mapSize.x = 2048;
+		this.spotLight.shadow.mapSize.y = 2048;
+		this.scene.add(this.spotLight);
+
+		const spotLightHelper = new THREE.SpotLightHelper(this.spotLight);
+		this.scene.add(spotLightHelper);
+
+		const shadowHelper = new THREE.CameraHelper(
+			this.spotLight.shadow.camera,
+		);
+		this.scene.add(shadowHelper);
 
 		// this.controls = new OrbitControls(
 		// 	this.camera,
@@ -159,12 +179,12 @@ export default class Flipbook {
 			),
 		};
 		const spineMaterials = [
-			new THREE.MeshBasicMaterial({ map: textures.spineEdgeLR }), // right face
-			new THREE.MeshBasicMaterial({ map: textures.spineEdgeLR }), // left face
-			new THREE.MeshBasicMaterial({ map: textures.spineEdgeTB }), // top face
-			new THREE.MeshBasicMaterial({ map: textures.spineEdgeTB }), // bottom face
-			new THREE.MeshBasicMaterial({ map: textures.spineInner }), // front face
-			new THREE.MeshBasicMaterial({ map: textures.spineOuter }), // back face
+			new THREE.MeshStandardMaterial({ map: textures.spineEdgeLR }), // right face
+			new THREE.MeshStandardMaterial({ map: textures.spineEdgeLR }), // left face
+			new THREE.MeshStandardMaterial({ map: textures.spineEdgeTB }), // top face
+			new THREE.MeshStandardMaterial({ map: textures.spineEdgeTB }), // bottom face
+			new THREE.MeshStandardMaterial({ map: textures.spineInner }), // front face
+			new THREE.MeshStandardMaterial({ map: textures.spineOuter }), // back face
 		];
 		const spineGeometry = new THREE.BoxGeometry(
 			this.spineWidth,
@@ -172,6 +192,8 @@ export default class Flipbook {
 			this.coverThickness,
 		);
 		this.spineMesh = new THREE.Mesh(spineGeometry, spineMaterials);
+		this.spineMesh.receiveShadow = true;
+		this.spineMesh.castShadow = true;
 		this.group.add(this.spineMesh);
 		this.spineMesh.position.z = this.spineZ;
 
@@ -183,7 +205,7 @@ export default class Flipbook {
 			this.group.add(page.pivot);
 
 			if (page.isCover) {
-				page.pivot.position.z = this.spineZ;
+				page.pivot.position.z = this.spineZ + 0.5;
 				page.pivot.position.x =
 					index === 0 ? this.spine1pos.x : this.spine2pos.x;
 			} else {
@@ -211,6 +233,8 @@ export default class Flipbook {
 		const deskMesh = new THREE.Mesh(deskGeometry, deskMaterial);
 		deskMesh.rotation.z = Math.PI / 2; // Ensure it's flat on the XY plane
 		deskMesh.position.z = 0;
+		deskMesh.receiveShadow = true;
+		deskMesh.castShadow = true;
 		this.scene.add(deskMesh);
 
 		// Add fps counter
@@ -418,10 +442,13 @@ export default class Flipbook {
 		if (bookAngle < 0) {
 			pivot.x = -pivot.x;
 		}
-
 		const newPoint = rotateY(new THREE.Vector3(0, 0, 0), pivot, -bookAngle);
 		this.group.position.x = newPoint.x;
 		this.group.position.z = newPoint.z;
+
+		// TODO: remove
+		// update spine normals
+		// this.spineMesh.geometry.computeVertexNormals();
 
 		this.renderer.render(this.scene, this.camera);
 	}

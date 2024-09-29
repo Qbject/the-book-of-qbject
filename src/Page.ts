@@ -71,12 +71,12 @@ export default class Page {
 		}
 
 		const materials = [
-			new THREE.MeshBasicMaterial(textures.back),
-			new THREE.MeshBasicMaterial(textures.front),
-			new THREE.MeshBasicMaterial(textures.edgeTop),
-			new THREE.MeshBasicMaterial(textures.edgeBottom),
-			new THREE.MeshBasicMaterial(textures.edgeRight),
-			new THREE.MeshBasicMaterial(textures.edgeLeft),
+			new THREE.MeshStandardMaterial(textures.back),
+			new THREE.MeshStandardMaterial(textures.front),
+			new THREE.MeshStandardMaterial(textures.edgeTop),
+			new THREE.MeshStandardMaterial(textures.edgeBottom),
+			new THREE.MeshStandardMaterial(textures.edgeRight),
+			new THREE.MeshStandardMaterial(textures.edgeLeft),
 		];
 
 		const geometry = new THREE.BoxGeometry(
@@ -89,6 +89,8 @@ export default class Page {
 		);
 
 		this.mesh = new THREE.Mesh(geometry, materials);
+		this.mesh.receiveShadow = true;
+		this.mesh.castShadow = true;
 		// this.mesh = new THREE.Mesh(
 		// 	geometry,
 		// 	new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true }),
@@ -210,6 +212,7 @@ export default class Page {
 			position.setZ(i, newZ);
 		}
 
+		this.mesh.geometry.computeVertexNormals();
 		position.needsUpdate = true;
 	}
 
