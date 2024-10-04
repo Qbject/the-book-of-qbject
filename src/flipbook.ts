@@ -233,8 +233,6 @@ export default class Flipbook {
 			map: deskTexture,
 		});
 		const deskMesh = new THREE.Mesh(deskGeometry, deskMaterial);
-		deskMesh.rotation.z = Math.PI / 2; // Ensure it's flat on the XY plane
-		deskMesh.position.z = 0;
 		deskMesh.receiveShadow = true;
 		deskMesh.castShadow = true;
 		this.scene.add(deskMesh);
@@ -447,11 +445,6 @@ export default class Flipbook {
 				}
 			}
 
-			// TODO: remove?
-			// updating renderOrder
-			page.mesh.renderOrder =
-				this.pages.length - Math.abs(this.progress - 0.5 - index);
-
 			// toggle bend
 			page.bendingEnabled = !(
 				this.lastGrabbedPageIndex !== undefined &&
@@ -484,10 +477,6 @@ export default class Flipbook {
 		const newPoint = rotateY(new THREE.Vector3(0, 0, 0), pivot, -bookAngle);
 		this.group.position.x = newPoint.x;
 		this.group.position.z = newPoint.z;
-
-		// TODO: remove
-		// update spine normals
-		// this.spineMesh.geometry.computeVertexNormals();
 
 		this.renderer.render(this.scene, this.camera);
 	}
