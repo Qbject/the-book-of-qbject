@@ -1,3 +1,4 @@
+// TODO: move from global
 type FlipBookParams = {
 	containerEl: HTMLElement;
 	pageWidth: number;
@@ -16,6 +17,14 @@ type FlipBookParams = {
 		spineEdgeTB: string;
 		spineEdgeLR: string;
 	};
+	settings?: Partial<FlipbookSettings>;
+};
+
+type FlipbookSettings = {
+	cameraAngle: number;
+	cameraDistance: number;
+	cameraNearClip: number;
+	cameraFarClip: number;
 };
 
 type PageParams = {

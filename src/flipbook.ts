@@ -16,6 +16,12 @@ export default class Flipbook {
 	private coverMargin: number;
 	private textureUrls;
 	private pageEdgeColor: number;
+	public readonly settings: FlipbookSettings = {
+		cameraAngle: 0,
+		cameraDistance: 2500,
+		cameraNearClip: 2000,
+		cameraFarClip: 3000,
+	};
 
 	private pages: Page[] = [];
 	private group: THREE.Group;
@@ -35,10 +41,6 @@ export default class Flipbook {
 	private controls: OrbitControls;
 	private stats;
 	private datGui: dat.GUI;
-	private datGuiOptions = {
-		cameraAngle: 1,
-		cameraDistance: 2500,
-	};
 
 	private curDrag?: {
 		touchId: number | null; // null if mouse is used
@@ -64,25 +66,6 @@ export default class Flipbook {
 		this.coverMargin = params.coverMargin || 8;
 		this.textureUrls = params.textureUrls;
 		this.pageEdgeColor = params.pageEdgeColor;
-
-		const updateCamera = () => {
-			const distance = this.datGuiOptions.cameraDistance;
-			const angle = this.datGuiOptions.cameraAngle;
-			this.camera.position.set(
-				0,
-				Math.cos((angle * Math.PI) / 2) * -distance,
-				Math.sin((angle * Math.PI) / 2) * distance,
-			);
-			this.camera.rotation.set((Math.PI / 2) * (1 - angle), 0, 0);
-		};
-
-		this.datGui = new dat.GUI();
-		this.datGui
-			.add(this.datGuiOptions, "cameraAngle", 0, 1, 0.01)
-			.onChange(updateCamera);
-		this.datGui
-			.add(this.datGuiOptions, "cameraDistance", 0, 5000, 5)
-			.onChange(updateCamera);
 
 		// add pages
 		const totalPages = Math.ceil(this.textureUrls.pages.length / 2);
@@ -132,12 +115,6 @@ export default class Flipbook {
 		);
 		this.camera.position.set(0, 0, 2500);
 		this.camera.rotation.set(0, 0, 0);
-
-		// bottom view
-		// this.camera.position.set(0, -1462, 441);
-		// this.camera.rotation.set(1.27, 0, 0);
-		// this.camera.near = 1000;
-		// this.camera.updateProjectionMatrix();
 
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -264,10 +241,28 @@ export default class Flipbook {
 		deskMesh.castShadow = true;
 		this.scene.add(deskMesh);
 
+		if (params.settings) {
+			this.applySettings(params.settings);
+		}
+
 		// Add fps counter
 		this.stats = new Stats();
 		this.stats.showPanel(0);
 		document.body.appendChild(this.stats.dom);
+
+		this.datGui = new dat.GUI();
+		this.datGui
+			.add(this.settings, "cameraAngle", 0, 1, 0.01)
+			.onChange(cameraAngle => this.applySettings({ cameraAngle }));
+		this.datGui
+			.add(this.settings, "cameraDistance", 0, 5000, 5)
+			.onChange(cameraDistance => this.applySettings({ cameraDistance }));
+		this.datGui
+			.add(this.settings, "cameraNearClip", 5, 5000, 5)
+			.onChange(cameraNearClip => this.applySettings({ cameraNearClip }));
+		this.datGui
+			.add(this.settings, "cameraFarClip", 5, 5000, 5)
+			.onChange(cameraFarClip => this.applySettings({ cameraFarClip }));
 
 		// event listeners
 		window.addEventListener(
@@ -486,6 +481,26 @@ export default class Flipbook {
 		this.camera.aspect = window.innerWidth / window.innerHeight;
 		this.camera.updateProjectionMatrix();
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
+	}
+
+	public applySettings(settings: Partial<FlipbookSettings>) {
+		Object.assign(this.settings, settings);
+
+		if (settings.cameraDistance || settings.cameraAngle) {
+			const { cameraDistance, cameraAngle } = this.settings;
+			this.camera.position.set(
+				0,
+				Math.sin((cameraAngle * Math.PI) / 2) * -cameraDistance,
+				Math.cos((cameraAngle * Math.PI) / 2) * cameraDistance,
+			);
+			this.camera.rotation.set((Math.PI / 2) * cameraAngle, 0, 0);
+		}
+
+		if (settings.cameraNearClip || settings.cameraFarClip) {
+			this.camera.near = this.settings.cameraNearClip;
+			this.camera.far = this.settings.cameraFarClip;
+			this.camera.updateProjectionMatrix();
+		}
 	}
 
 	public animateCameraShift(
