@@ -371,8 +371,10 @@ export default class Flipbook {
 		if (this.curTurn) {
 			if (!this.curDrag) {
 				// inertia and gravity
-				const inertiaShift = ((this.progress % 1) - 0.5) * 10 * dt;
-				this.curTurn.inertia += inertiaShift;
+				if (this.progress % 1) {
+					const gravity = ((this.progress % 1) - 0.5) * 10 * dt;
+					this.curTurn.inertia += gravity;
+				}
 				this.progress += this.curTurn.inertia * dt;
 			}
 
