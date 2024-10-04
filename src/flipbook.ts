@@ -4,6 +4,7 @@ import { clamp, rotateY } from "./util";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "stats.js";
 import Page from "./Page";
+import * as dat from "dat.gui";
 
 export default class Flipbook {
 	private containerEl: HTMLElement;
@@ -33,6 +34,11 @@ export default class Flipbook {
 
 	private controls: OrbitControls;
 	private stats;
+	private datGui: dat.GUI;
+	private datGuiOptions = {
+		cameraAngle: 1,
+		cameraDistance: 2500,
+	};
 
 	private curDrag?: {
 		touchId: number | null; // null if mouse is used
@@ -58,6 +64,25 @@ export default class Flipbook {
 		this.coverMargin = params.coverMargin || 8;
 		this.textureUrls = params.textureUrls;
 		this.pageEdgeColor = params.pageEdgeColor;
+
+		const updateCamera = () => {
+			const distance = this.datGuiOptions.cameraDistance;
+			const angle = this.datGuiOptions.cameraAngle;
+			this.camera.position.set(
+				0,
+				Math.cos((angle * Math.PI) / 2) * -distance,
+				Math.sin((angle * Math.PI) / 2) * distance,
+			);
+			this.camera.rotation.set((Math.PI / 2) * (1 - angle), 0, 0);
+		};
+
+		this.datGui = new dat.GUI();
+		this.datGui
+			.add(this.datGuiOptions, "cameraAngle", 0, 1, 0.01)
+			.onChange(updateCamera);
+		this.datGui
+			.add(this.datGuiOptions, "cameraDistance", 0, 5000, 5)
+			.onChange(updateCamera);
 
 		// add pages
 		const totalPages = Math.ceil(this.textureUrls.pages.length / 2);
@@ -101,16 +126,18 @@ export default class Flipbook {
 		this.camera = new THREE.PerspectiveCamera(
 			20,
 			window.innerWidth / window.innerHeight,
-			2000,
+			// 2000,
+			1000,
 			3000,
 		);
 		this.camera.position.set(0, 0, 2500);
+		this.camera.rotation.set(0, 0, 0);
 
 		// bottom view
-		this.camera.position.set(0, -1462, 441);
-		this.camera.rotation.set(1.27, 0, 0);
-		this.camera.near = 1000;
-		this.camera.updateProjectionMatrix();
+		// this.camera.position.set(0, -1462, 441);
+		// this.camera.rotation.set(1.27, 0, 0);
+		// this.camera.near = 1000;
+		// this.camera.updateProjectionMatrix();
 
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
