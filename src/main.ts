@@ -16,12 +16,10 @@ document.addEventListener("DOMContentLoaded", () => {
 			textureUrls: {
 				pages: [
 					"https://picsum.photos/id/110/445/720",
-					"https://picsum.photos/id/111/445/720",
-					// "https://picsum.photos/id/120/445/720",
+					"/img/page2.jpg",
 					"/img/line.png",
-					// "https://picsum.photos/id/121/445/720",
 					"/img/page.jpg",
-					"https://picsum.photos/id/122/445/720",
+					"/img/page2.jpg",
 					"https://picsum.photos/id/123/445/720",
 					"https://picsum.photos/id/124/445/720",
 					"https://picsum.photos/id/125/445/720",

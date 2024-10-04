@@ -121,6 +121,7 @@ export default class Flipbook {
 		);
 
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
+		this.renderer.setPixelRatio(window.devicePixelRatio);
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
 		this.renderer.shadowMap.enabled = true;
 		this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -136,12 +137,12 @@ export default class Flipbook {
 		this.scene.add(this.spotLight);
 
 		this.spotLightHelper = new THREE.SpotLightHelper(this.spotLight);
-		this.scene.add(this.spotLightHelper);
+		// this.scene.add(this.spotLightHelper);
 
 		this.spotShadowHelper = new THREE.CameraHelper(
 			this.spotLight.shadow.camera,
 		);
-		this.scene.add(this.spotShadowHelper);
+		// this.scene.add(this.spotShadowHelper);
 
 		// this.controls = new OrbitControls(
 		// 	this.camera,
