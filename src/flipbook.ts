@@ -21,6 +21,13 @@ export default class Flipbook {
 		cameraDistance: 2500,
 		cameraNearClip: 2000,
 		cameraFarClip: 3000,
+
+		spotLightX: 100,
+		spotLightY: 300,
+		spotLightZ: 1000,
+		spotLightNearClip: 500,
+		spotLightFarClip: 2000,
+		spotLightMapSize: 2048,
 	};
 
 	private pages: Page[] = [];
@@ -55,6 +62,8 @@ export default class Flipbook {
 		inertia: number;
 	};
 	private lastGrabbedPageIndex?: number;
+	spotLightHelper: THREE.SpotLightHelper;
+	spotShadowHelper: THREE.CameraHelper;
 
 	constructor(params: FlipBookParams) {
 		this.containerEl = params.containerEl;
@@ -122,23 +131,17 @@ export default class Flipbook {
 		this.scene.add(this.ambientLight);
 
 		this.spotLight = new THREE.SpotLight(0xffffff, 2000000, 0, 0.6, 0.2);
-		this.spotLight.position.set(100, 300, 1000);
-		this.spotLight.lookAt(new THREE.Vector3());
 		this.spotLight.castShadow = true;
 		this.spotLight.shadow.bias = -0.0001;
-		this.spotLight.shadow.camera.near = 500;
-		this.spotLight.shadow.camera.far = 2000;
-		this.spotLight.shadow.mapSize.x = 2048;
-		this.spotLight.shadow.mapSize.y = 2048;
 		this.scene.add(this.spotLight);
 
-		const spotLightHelper = new THREE.SpotLightHelper(this.spotLight);
-		this.scene.add(spotLightHelper);
+		this.spotLightHelper = new THREE.SpotLightHelper(this.spotLight);
+		this.scene.add(this.spotLightHelper);
 
-		const shadowHelper = new THREE.CameraHelper(
+		this.spotShadowHelper = new THREE.CameraHelper(
 			this.spotLight.shadow.camera,
 		);
-		this.scene.add(shadowHelper);
+		this.scene.add(this.spotShadowHelper);
 
 		// this.controls = new OrbitControls(
 		// 	this.camera,
@@ -247,18 +250,34 @@ export default class Flipbook {
 
 		const cameraFolder = this.datGui.addFolder("Camera");
 		cameraFolder.open();
-		cameraFolder
-			.add(this.settings, "cameraAngle", 0, 1, 0.01)
-			.onChange(cameraAngle => this.applySettings({ cameraAngle }));
-		cameraFolder
-			.add(this.settings, "cameraDistance", 0, 5000, 5)
-			.onChange(cameraDistance => this.applySettings({ cameraDistance }));
-		cameraFolder
-			.add(this.settings, "cameraNearClip", 5, 5000, 5)
-			.onChange(cameraNearClip => this.applySettings({ cameraNearClip }));
-		cameraFolder
-			.add(this.settings, "cameraFarClip", 5, 5000, 5)
-			.onChange(cameraFarClip => this.applySettings({ cameraFarClip }));
+		cameraFolder.add(this.settings, "cameraAngle", 0, 1);
+		cameraFolder.add(this.settings, "cameraDistance", 0, 5000);
+		cameraFolder.add(this.settings, "cameraNearClip", 5, 5000);
+		cameraFolder.add(this.settings, "cameraFarClip", 5, 5000);
+
+		const spotLightFolder = this.datGui.addFolder("Spot Light");
+		const spotLightPosFolder = spotLightFolder.addFolder("Position");
+		spotLightPosFolder.add(this.settings, "spotLightX", -1000, 1000);
+		spotLightPosFolder.add(this.settings, "spotLightY", -1000, 1000);
+		spotLightPosFolder.add(this.settings, "spotLightZ", 0, 2000);
+		spotLightFolder.add(this.settings, "spotLightNearClip", 1, 2000);
+		spotLightFolder.add(this.settings, "spotLightFarClip", 1, 2000);
+		spotLightFolder.add(this.settings, "spotLightMapSize", 0, 4096);
+
+		const addChangeListeners = (gui: dat.GUI): void => {
+			gui.__controllers.forEach((controller: dat.GUIController) => {
+				controller.onChange((value: any) => {
+					this.applySettings({ [controller.property]: value });
+				});
+			});
+
+			for (const folderName in gui.__folders) {
+				if (gui.__folders.hasOwnProperty(folderName)) {
+					addChangeListeners(gui.__folders[folderName]);
+				}
+			}
+		};
+		addChangeListeners(this.datGui);
 
 		// event listeners
 		window.addEventListener(
@@ -502,6 +521,36 @@ export default class Flipbook {
 			this.camera.near = this.settings.cameraNearClip;
 			this.camera.far = this.settings.cameraFarClip;
 			this.camera.updateProjectionMatrix();
+		}
+
+		if (
+			newSettings.spotLightX ||
+			newSettings.spotLightY ||
+			newSettings.spotLightZ
+		) {
+			this.spotLight.position.set(
+				this.settings.spotLightX,
+				this.settings.spotLightY,
+				this.settings.spotLightZ,
+			);
+			this.spotLight.lookAt(new THREE.Vector3());
+
+			this.spotLightHelper.update();
+			this.spotShadowHelper.update();
+		}
+
+		if (newSettings.spotLightNearClip || newSettings.spotLightFarClip) {
+			this.spotLight.shadow.camera.near = this.settings.spotLightNearClip;
+			this.spotLight.shadow.camera.far = this.settings.spotLightFarClip;
+			this.spotLight.shadow.camera.updateProjectionMatrix();
+		}
+
+		if (newSettings.spotLightMapSize) {
+			this.spotLight.shadow.mapSize.x = this.settings.spotLightMapSize;
+			this.spotLight.shadow.mapSize.y = this.settings.spotLightMapSize;
+			this.spotLight.shadow.map?.dispose?.();
+			this.spotLight.shadow.map = null;
+			this.spotLight.shadow.needsUpdate = true;
 		}
 	}
 

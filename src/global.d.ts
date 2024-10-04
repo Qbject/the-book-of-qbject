@@ -25,6 +25,13 @@ type FlipbookSettings = {
 	cameraDistance: number;
 	cameraNearClip: number;
 	cameraFarClip: number;
+
+	spotLightX: number;
+	spotLightY: number;
+	spotLightZ: number;
+	spotLightNearClip: number;
+	spotLightFarClip: number;
+	spotLightMapSize: number;
 };
 
 type PageParams = {
