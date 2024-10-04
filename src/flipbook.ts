@@ -109,12 +109,7 @@ export default class Flipbook {
 		this.camera = new THREE.PerspectiveCamera(
 			20,
 			window.innerWidth / window.innerHeight,
-			// 2000,
-			1000,
-			3000,
 		);
-		this.camera.position.set(0, 0, 2500);
-		this.camera.rotation.set(0, 0, 0);
 
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -241,9 +236,7 @@ export default class Flipbook {
 		deskMesh.castShadow = true;
 		this.scene.add(deskMesh);
 
-		if (params.settings) {
-			this.applySettings(params.settings);
-		}
+		this.applySettings(params.settings || {}, true);
 
 		// Add fps counter
 		this.stats = new Stats();
@@ -251,16 +244,19 @@ export default class Flipbook {
 		document.body.appendChild(this.stats.dom);
 
 		this.datGui = new dat.GUI();
-		this.datGui
+
+		const cameraFolder = this.datGui.addFolder("Camera");
+		cameraFolder.open();
+		cameraFolder
 			.add(this.settings, "cameraAngle", 0, 1, 0.01)
 			.onChange(cameraAngle => this.applySettings({ cameraAngle }));
-		this.datGui
+		cameraFolder
 			.add(this.settings, "cameraDistance", 0, 5000, 5)
 			.onChange(cameraDistance => this.applySettings({ cameraDistance }));
-		this.datGui
+		cameraFolder
 			.add(this.settings, "cameraNearClip", 5, 5000, 5)
 			.onChange(cameraNearClip => this.applySettings({ cameraNearClip }));
-		this.datGui
+		cameraFolder
 			.add(this.settings, "cameraFarClip", 5, 5000, 5)
 			.onChange(cameraFarClip => this.applySettings({ cameraFarClip }));
 
@@ -483,10 +479,16 @@ export default class Flipbook {
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
 	}
 
-	public applySettings(settings: Partial<FlipbookSettings>) {
-		Object.assign(this.settings, settings);
+	public applySettings(
+		newSettings: Partial<FlipbookSettings>,
+		updateAll = false,
+	) {
+		Object.assign(this.settings, newSettings);
+		if (updateAll) {
+			newSettings = this.settings; // ensure all updates are triggered
+		}
 
-		if (settings.cameraDistance || settings.cameraAngle) {
+		if (newSettings.cameraDistance || newSettings.cameraAngle) {
 			const { cameraDistance, cameraAngle } = this.settings;
 			this.camera.position.set(
 				0,
@@ -496,7 +498,7 @@ export default class Flipbook {
 			this.camera.rotation.set((Math.PI / 2) * cameraAngle, 0, 0);
 		}
 
-		if (settings.cameraNearClip || settings.cameraFarClip) {
+		if (newSettings.cameraNearClip || newSettings.cameraFarClip) {
 			this.camera.near = this.settings.cameraNearClip;
 			this.camera.far = this.settings.cameraFarClip;
 			this.camera.updateProjectionMatrix();
