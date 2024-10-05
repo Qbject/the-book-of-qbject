@@ -62,8 +62,9 @@ export default class Flipbook {
 		inertia: number;
 	};
 	private lastGrabbedPageIndex?: number;
-	spotLightHelper: THREE.SpotLightHelper;
-	spotShadowHelper: THREE.CameraHelper;
+	private spotLightHelper: THREE.SpotLightHelper;
+	private spotShadowHelper: THREE.CameraHelper;
+	private textureLoader: THREE.TextureLoader;
 
 	constructor(params: FlipBookParams) {
 		this.containerEl = params.containerEl;
@@ -75,6 +76,8 @@ export default class Flipbook {
 		this.coverMargin = params.coverMargin || 8;
 		this.textureUrls = params.textureUrls;
 		this.pageEdgeColor = params.pageEdgeColor;
+
+		this.textureLoader = new THREE.TextureLoader();
 
 		// add pages
 		const totalPages = Math.ceil(this.textureUrls.pages.length / 2);
@@ -110,6 +113,7 @@ export default class Flipbook {
 						: this.pageRootThickness,
 					isCover,
 					edgeColor: this.pageEdgeColor,
+					textureLoader: this.textureLoader,
 				}),
 			);
 		}
@@ -121,6 +125,9 @@ export default class Flipbook {
 		);
 
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
+		this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+		// this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+		// this.renderer.toneMappingExposure = 1.2;
 		this.renderer.setPixelRatio(window.devicePixelRatio);
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
 		this.renderer.shadowMap.enabled = true;
@@ -167,27 +174,25 @@ export default class Flipbook {
 		this.spine2pos = this.spine1pos.clone().setX(-this.spine1pos.x);
 
 		// init spine mesh
+		const _texture = (url: string) => {
+			const texture = this.textureLoader.load(url);
+			texture.colorSpace = THREE.SRGBColorSpace;
+			return { map: texture };
+		};
+
 		const textures = {
-			spineInner: new THREE.TextureLoader().load(
-				this.textureUrls.spineInner,
-			),
-			spineOuter: new THREE.TextureLoader().load(
-				this.textureUrls.spineOuter,
-			),
-			spineEdgeLR: new THREE.TextureLoader().load(
-				this.textureUrls.spineEdgeLR,
-			),
-			spineEdgeTB: new THREE.TextureLoader().load(
-				this.textureUrls.spineEdgeTB,
-			),
+			spineInner: _texture(this.textureUrls.spineInner),
+			spineOuter: _texture(this.textureUrls.spineOuter),
+			spineEdgeLR: _texture(this.textureUrls.spineEdgeLR),
+			spineEdgeTB: _texture(this.textureUrls.spineEdgeTB),
 		};
 		const spineMaterials = [
-			new THREE.MeshStandardMaterial({ map: textures.spineEdgeLR }), // right face
-			new THREE.MeshStandardMaterial({ map: textures.spineEdgeLR }), // left face
-			new THREE.MeshStandardMaterial({ map: textures.spineEdgeTB }), // top face
-			new THREE.MeshStandardMaterial({ map: textures.spineEdgeTB }), // bottom face
-			new THREE.MeshStandardMaterial({ map: textures.spineInner }), // front face
-			new THREE.MeshStandardMaterial({ map: textures.spineOuter }), // back face
+			new THREE.MeshStandardMaterial(textures.spineEdgeLR), // right face
+			new THREE.MeshStandardMaterial(textures.spineEdgeLR), // left face
+			new THREE.MeshStandardMaterial(textures.spineEdgeTB), // top face
+			new THREE.MeshStandardMaterial(textures.spineEdgeTB), // bottom face
+			new THREE.MeshStandardMaterial(textures.spineInner), // front face
+			new THREE.MeshStandardMaterial(textures.spineOuter), // back face
 		];
 		const spineGeometry = new THREE.BoxGeometry(
 			this.spineWidth,
@@ -229,7 +234,8 @@ export default class Flipbook {
 
 		// create desk
 		const deskGeometry = new THREE.PlaneGeometry(3000, 3000, 1, 1);
-		const deskTexture = new THREE.TextureLoader().load("/img/desk.jpg");
+		const deskTexture = this.textureLoader.load("/img/desk.jpg");
+		deskTexture.colorSpace = THREE.SRGBColorSpace;
 		const deskMaterial = new THREE.MeshStandardMaterial({
 			map: deskTexture,
 		});

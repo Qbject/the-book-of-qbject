@@ -47,6 +47,7 @@ type PageParams = {
 	thickness?: number;
 	rootThickness?: number;
 	isCover?: boolean;
+	textureLoader: THREE.TextureLoader;
 };
 
 type PageControlPointParams = {

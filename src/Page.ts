@@ -28,6 +28,7 @@ export default class Page {
 	private zSegments = 20;
 	private vertexRelCoords: THREE.Vector3[] = [];
 	public bendingEnabled: boolean = true;
+	private textureLoader: THREE.TextureLoader;
 
 	constructor(pageParams: PageParams) {
 		this.textureUrls = pageParams.textureUrls;
@@ -37,18 +38,22 @@ export default class Page {
 		this.rootThickness = pageParams.rootThickness || 4;
 		this.isCover = !!pageParams.isCover;
 		this.edgeColor = pageParams.edgeColor || 0xffffff;
+		this.textureLoader = pageParams.textureLoader;
 
 		if (this.isCover) {
 			this.zSegments = 1;
 		}
 
 		// Load front and back textures
-		const _texture = (url: string) => ({
-			map: new THREE.TextureLoader().load(url),
-		});
+		const _texture = (url: string) => {
+			const texture = this.textureLoader.load(url);
+			texture.colorSpace = THREE.SRGBColorSpace;
+			return { map: texture };
+		};
 		const _color = (hex: number) => ({
 			color: new THREE.Color(hex),
 		});
+
 		const textures: Record<
 			string,
 			{ map?: THREE.Texture; color?: THREE.Color }
