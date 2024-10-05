@@ -29,6 +29,7 @@ export default class Page {
 	private vertexRelCoords: THREE.Vector3[] = [];
 	public bendingEnabled: boolean = true;
 	private textureLoader: THREE.TextureLoader;
+	private isFrontCover: boolean;
 
 	constructor(pageParams: PageParams) {
 		this.textureUrls = pageParams.textureUrls;
@@ -39,6 +40,7 @@ export default class Page {
 		this.isCover = !!pageParams.isCover;
 		this.edgeColor = pageParams.edgeColor || 0xffffff;
 		this.textureLoader = pageParams.textureLoader;
+		this.isFrontCover = pageParams.isFrontCover;
 
 		if (this.isCover) {
 			this.zSegments = 1;
@@ -129,7 +131,9 @@ export default class Page {
 
 	private getCurve() {
 		if (this.isCover) {
-			const backShift = this.rootThickness / 2;
+			const backShift = this.rootThickness;
+			const leftShift =
+				(this.rootThickness / 2) * (this.isFrontCover ? 1 : -1);
 			const angle = (-this.turnProgress + 1) * (Math.PI / 2);
 
 			const direction = new THREE.Vector2(
@@ -137,20 +141,24 @@ export default class Page {
 				Math.sin(angle),
 			);
 
-			const p0 = new THREE.Vector2().addScaledVector(
-				direction,
-				-backShift,
-			);
-			const p2 = new THREE.Vector2().addScaledVector(
-				direction,
-				this.width - backShift,
-			);
+			const perpendicular = new THREE.Vector2(-direction.y, direction.x);
+
+			const p0 = new THREE.Vector2()
+				.addScaledVector(direction, -backShift)
+				.addScaledVector(perpendicular, leftShift);
+
+			const p2 = new THREE.Vector2()
+				.addScaledVector(direction, this.width - backShift)
+				.addScaledVector(perpendicular, leftShift);
+
 			const p1 = new THREE.Vector2()
 				.addVectors(p0, p2)
 				.multiplyScalar(0.5);
 
 			return new THREE.QuadraticBezierCurve(p0, p1, p2);
 		} else {
+			const baseElevation = 20;
+
 			const elevationShift =
 				cosineInterpolate(
 					0,
@@ -169,7 +177,8 @@ export default class Page {
 			const p0 = new THREE.Vector2();
 			const p1 = new THREE.Vector2(
 				0,
-				elevationShift * 2 + 20 * Math.abs(this.turnProgress),
+				elevationShift * 2 +
+					baseElevation * Math.abs(this.turnProgress),
 			);
 			const p2 = calc(this.turnProgress, this.width * 0.5);
 			const p3 = calc(this.turnProgressLag, this.width);

@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
 			containerEl,
 			textureUrls: {
 				pages: [
-					"https://picsum.photos/id/110/445/720",
+					"https://picsum.photos/id/110/457/736",
 					"/img/page2.jpg",
 					"/img/line.png",
 					"/img/page.jpg",
@@ -49,6 +49,8 @@ document.addEventListener("DOMContentLoaded", () => {
 			coverThickness: 4,
 			pageRootThickness: 4,
 			pageThickness: 2,
+			coverMarginX: 8,
+			coverMarginY: 8,
 		});
 	} else {
 		console.error("No container element found");

@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { gsap } from "gsap";
-import { clamp, rotateY } from "./util";
+import { clamp, cosineInterpolate, lerp, rotateY } from "./util";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "stats.js";
 import Page from "./Page";
@@ -13,7 +13,8 @@ export default class Flipbook {
 	private pageThickness: number;
 	private pageRootThickness: number;
 	private coverThickness: number;
-	private coverMargin: number;
+	private coverMarginX: number;
+	private coverMarginY: number;
 	private textureUrls;
 	private pageEdgeColor: number;
 	public readonly settings: FlipbookSettings = {
@@ -40,8 +41,6 @@ export default class Flipbook {
 	private ambientLight: THREE.AmbientLight;
 
 	private progress = 0;
-	private spine1pos = new THREE.Vector3(0, 0, 0);
-	private spine2pos = new THREE.Vector3(0, 0, 0);
 	private spineWidth: number;
 	private spineZ: number;
 
@@ -73,7 +72,8 @@ export default class Flipbook {
 		this.pageThickness = params.pageThickness || 2;
 		this.pageRootThickness = params.pageRootThickness || 4;
 		this.coverThickness = params.coverThickness || 5;
-		this.coverMargin = params.coverMargin || 8;
+		this.coverMarginX = params.coverMarginX || 8;
+		this.coverMarginY = params.coverMarginY || 8;
 		this.textureUrls = params.textureUrls;
 		this.pageEdgeColor = params.pageEdgeColor;
 
@@ -84,10 +84,10 @@ export default class Flipbook {
 		for (let i = 0; i < totalPages; i++) {
 			const isCover = i === 0 || i === totalPages - 1;
 			const width = isCover
-				? this.pageWidth + this.coverMargin + this.coverThickness
+				? this.pageWidth + this.coverMarginX + this.coverThickness
 				: this.pageWidth;
 			const height = isCover
-				? this.pageHeight + this.coverMargin * 2
+				? this.pageHeight + this.coverMarginY * 2
 				: this.pageHeight;
 
 			const edgeTextures: Record<string, string> = {};
@@ -112,6 +112,7 @@ export default class Flipbook {
 						? this.coverThickness
 						: this.pageRootThickness,
 					isCover,
+					isFrontCover: i === 0,
 					edgeColor: this.pageEdgeColor,
 					textureLoader: this.textureLoader,
 				}),
@@ -160,18 +161,8 @@ export default class Flipbook {
 		this.scene.add(this.group);
 
 		// init spine
-		this.spineWidth =
-			this.pages
-				.filter(page => !page.isCover)
-				.reduce((acc, page) => acc + page.rootThickness, 0) +
-			this.coverThickness;
+		this.spineWidth = (this.pages.length - 2) * this.pageRootThickness;
 		this.spineZ = this.coverThickness / 2;
-		this.spine1pos = new THREE.Vector3(
-			-this.spineWidth / 2,
-			0,
-			this.spineZ,
-		);
-		this.spine2pos = this.spine1pos.clone().setX(-this.spine1pos.x);
 
 		// init spine mesh
 		const _texture = (url: string) => {
@@ -196,7 +187,7 @@ export default class Flipbook {
 		];
 		const spineGeometry = new THREE.BoxGeometry(
 			this.spineWidth,
-			this.pageHeight + this.coverMargin * 2,
+			this.pageHeight + this.coverMarginY * 2,
 			this.coverThickness,
 		);
 		this.spineMesh = new THREE.Mesh(spineGeometry, spineMaterials);
@@ -206,21 +197,19 @@ export default class Flipbook {
 		this.spineMesh.position.z = this.spineZ;
 
 		// init pages
-		let spinePlacementStart =
-			-(this.spineWidth / 2) + this.coverThickness / 2;
+		let spinePlacementStart = -this.spineWidth / 2;
 		let spinePlacementShift = 0;
 		this.pages.forEach((page, index) => {
 			this.group.add(page.pivot);
 
 			if (page.isCover) {
-				page.pivot.position.z = this.spineZ + 0.5;
+				page.pivot.position.z = this.coverThickness;
 				page.pivot.position.x =
-					index === 0 ? this.spine1pos.x : this.spine2pos.x;
+					(this.spineWidth / 2) * (index ? 1 : -1);
 			} else {
 				const elevationLeft =
 					spinePlacementShift + page.rootThickness / 2;
-				const elevationRight =
-					this.spineWidth - this.coverThickness - elevationLeft;
+				const elevationRight = this.spineWidth - elevationLeft;
 				page.setElevation(elevationLeft, elevationRight);
 
 				page.pivot.position.z = this.spineZ + this.coverThickness / 2;
@@ -233,7 +222,7 @@ export default class Flipbook {
 		});
 
 		// create desk
-		const deskGeometry = new THREE.PlaneGeometry(3000, 3000, 1, 1);
+		const deskGeometry = new THREE.PlaneGeometry(2000, 2000, 1, 1);
 		const deskTexture = this.textureLoader.load("/img/desk.jpg");
 		deskTexture.colorSpace = THREE.SRGBColorSpace;
 		const deskMaterial = new THREE.MeshStandardMaterial({
@@ -475,7 +464,7 @@ export default class Flipbook {
 		const pivot = new THREE.Vector3(
 			this.spineWidth / 2,
 			0,
-			this.coverThickness / 2,
+			this.coverThickness,
 		);
 		if (bookAngle < 0) {
 			pivot.x = -pivot.x;

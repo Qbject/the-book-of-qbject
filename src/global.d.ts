@@ -6,7 +6,8 @@ type FlipBookParams = {
 	pageThickness?: number;
 	pageRootThickness?: number;
 	coverThickness?: number;
-	coverMargin?: number;
+	coverMarginX?: number;
+	coverMarginY?: number;
 	pageEdgeColor: number;
 	textureUrls: {
 		pages: string[];
@@ -48,6 +49,7 @@ type PageParams = {
 	rootThickness?: number;
 	isCover?: boolean;
 	textureLoader: THREE.TextureLoader;
+	isFrontCover: boolean;
 };
 
 type PageControlPointParams = {
