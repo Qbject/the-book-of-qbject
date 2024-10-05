@@ -317,8 +317,7 @@ export default class Flipbook {
 		this.renderer.domElement.addEventListener("touchend", event => {
 			if (
 				event.changedTouches.length === 1 &&
-				event.touches.length === 0 &&
-				this.curTurn
+				event.touches.length === 0
 			) {
 				this.curDrag = undefined;
 			}
@@ -346,7 +345,7 @@ export default class Flipbook {
 		});
 
 		this.renderer.domElement.addEventListener("mouseup", () => {
-			if (this.curDrag && !this.curDrag.touchId && this.curTurn) {
+			if (this.curDrag && !this.curDrag.touchId) {
 				this.curDrag = undefined;
 			}
 		});
