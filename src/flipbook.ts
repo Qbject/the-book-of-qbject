@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { gsap } from "gsap";
-import { clamp, cosineInterpolate, lerp, rotateY } from "./util";
+import { clamp, rotateY } from "./util";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "stats.js";
 import Page from "./Page";
