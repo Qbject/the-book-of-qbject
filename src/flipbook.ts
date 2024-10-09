@@ -96,27 +96,24 @@ export default class Flipbook {
 				edgeTextures.edgeTB = this.textureUrls.coverEdgeTB;
 			}
 
-			this.pages.push(
-				new Page({
-					textureUrls: {
-						front: this.textureUrls.pages[i * 2],
-						back: this.textureUrls.pages[i * 2 + 1],
-						...edgeTextures,
-					},
-					width,
-					height,
-					thickness: isCover
-						? this.coverThickness
-						: this.pageThickness,
-					rootThickness: isCover
-						? this.coverThickness
-						: this.pageRootThickness,
-					isCover,
-					isFrontCover: i === 0,
-					edgeColor: this.pageEdgeColor,
-					textureLoader: this.textureLoader,
-				}),
-			);
+			const page = new Page({
+				textureUrls: {
+					front: this.textureUrls.pages[i * 2],
+					back: this.textureUrls.pages[i * 2 + 1],
+					...edgeTextures,
+				},
+				width,
+				height,
+				thickness: isCover ? this.coverThickness : this.pageThickness,
+				rootThickness: isCover
+					? this.coverThickness
+					: this.pageRootThickness,
+				isCover,
+				isFrontCover: i === 0,
+				edgeColor: this.pageEdgeColor,
+				textureLoader: this.textureLoader,
+			});
+			this.pages.push(page);
 		}
 
 		this.scene = new THREE.Scene();
@@ -193,8 +190,9 @@ export default class Flipbook {
 		this.spineMesh = new THREE.Mesh(spineGeometry, spineMaterials);
 		this.spineMesh.receiveShadow = true;
 		this.spineMesh.castShadow = true;
-		this.group.add(this.spineMesh);
 		this.spineMesh.position.z = this.spineZ;
+		this.spineMesh.renderOrder = 99;
+		this.group.add(this.spineMesh);
 
 		// init pages
 		let spinePlacementStart = -this.spineWidth / 2;
@@ -231,6 +229,7 @@ export default class Flipbook {
 		const deskMesh = new THREE.Mesh(deskGeometry, deskMaterial);
 		deskMesh.receiveShadow = true;
 		deskMesh.castShadow = true;
+		deskMesh.renderOrder = 100;
 		this.scene.add(deskMesh);
 
 		this.applySettings(params.settings || {}, true);
@@ -447,6 +446,9 @@ export default class Flipbook {
 			);
 
 			page.setTurnProgress(tp);
+
+			page.mesh.renderOrder = Math.abs(this.progress - 0.5 - index);
+
 			page.update(dt);
 		});
 

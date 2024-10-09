@@ -125,7 +125,6 @@ export default class Page {
 			this.vertexRelCoords[i] = coord;
 		}
 
-		position.needsUpdate = true;
 		uv.needsUpdate = true;
 	}
 
@@ -157,6 +156,7 @@ export default class Page {
 
 			return new THREE.QuadraticBezierCurve(p0, p1, p2);
 		} else {
+			// TODO: move to this.elevationLeft/Right
 			const baseElevation = 20;
 
 			const elevationShift =
@@ -208,10 +208,14 @@ export default class Page {
 		for (let i = 0; i < position.count; i++) {
 			const relCoord = this.vertexRelCoords[i];
 
-			const pos = curve.getPointAt(relCoord.z * (1 / curveStretch));
 			// const pos = curve.getPoint(relCoord.z * (1 / curveStretch));
+			const pos = curve.getPointAt(relCoord.z * (1 / curveStretch));
+
+			// TODO: get direction from previous point?
+			// const direction =
+			// 	vectorToRadians(curve.getTangent(relCoord.z)) + Math.PI / 2;
 			const direction =
-				vectorToRadians(curve.getTangent(relCoord.z)) + Math.PI / 2;
+				vectorToRadians(curve.getTangentAt(relCoord.z)) + Math.PI / 2;
 
 			const thickness = lerp(
 				this.rootThickness,
@@ -226,8 +230,9 @@ export default class Page {
 			position.setZ(i, newZ);
 		}
 
-		this.mesh.geometry.computeVertexNormals();
 		position.needsUpdate = true;
+		// TODO: calculate normals manually?
+		this.mesh.geometry.computeVertexNormals();
 	}
 
 	public setTurnProgress(turnProgress: number) {
