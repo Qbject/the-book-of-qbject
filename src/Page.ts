@@ -6,6 +6,7 @@ import {
 	lerp,
 	clamp,
 } from "./util";
+import BezierCurveVisualizer from "./BezierCurveVisualizer";
 
 export default class Page {
 	public textureUrls;
@@ -30,6 +31,8 @@ export default class Page {
 	public bendingEnabled: boolean = true;
 	private textureLoader: THREE.TextureLoader;
 	private isFrontCover: boolean;
+
+	private curveVisualizer: BezierCurveVisualizer;
 
 	constructor(pageParams: PageParams) {
 		this.textureUrls = pageParams.textureUrls;
@@ -126,6 +129,8 @@ export default class Page {
 		}
 
 		uv.needsUpdate = true;
+
+		this.curveVisualizer = new BezierCurveVisualizer(this.mesh);
 	}
 
 	private getCurve() {
@@ -156,32 +161,32 @@ export default class Page {
 
 			return new THREE.QuadraticBezierCurve(p0, p1, p2);
 		} else {
-			// TODO: move to this.elevationLeft/Right
-			const baseElevation = 30;
+			const piProgress = Math.abs(this.turnProgress) * (Math.PI / 2);
+			const eFactorSin = Math.sin(piProgress);
+			const eFactorCos = -Math.cos(piProgress) + 1;
 
-			const elevationShift =
-				cosineInterpolate(
-					0,
-					this.turnProgress > 0
-						? this.elevationRight
-						: this.elevationLeft,
-					Math.abs(this.turnProgress) * 0.5,
-				) * 2;
+			const isRight = this.turnProgress > 0;
+			const maxHeight = isRight
+				? this.elevationRight
+				: this.elevationLeft;
 
-			const calc = (tp: number, dist: number) =>
+			// elevation of the second control point
+			const p2baseElevation = 15;
+			const p2elev = eFactorSin * (maxHeight + p2baseElevation) * 2;
+			// elevation of the 3rd and the 4th control points
+			const p34elev = eFactorCos * maxHeight;
+
+			// calculates positions for the 3rd and the 4th control points
+			const calcP34 = (tp: number, dist: number) =>
 				new THREE.Vector2(
 					Math.sin(tp * (Math.PI / 2)) * dist,
-					Math.cos(tp * (Math.PI / 2)) * dist + elevationShift,
+					Math.cos(tp * (Math.PI / 2)) * dist + p34elev,
 				);
 
 			const p0 = new THREE.Vector2();
-			const p1 = new THREE.Vector2(
-				0,
-				elevationShift * 2 +
-					baseElevation * Math.abs(this.turnProgress),
-			);
-			const p2 = calc(this.turnProgress, this.width * 0.5);
-			const p3 = calc(this.turnProgressLag, this.width);
+			const p1 = new THREE.Vector2(0, p2elev);
+			const p2 = calcP34(this.turnProgress, this.width * 0.5);
+			const p3 = calcP34(this.turnProgressLag, this.width);
 
 			return new THREE.CubicBezierCurve(p0, p1, p2, p3);
 		}
@@ -202,6 +207,7 @@ export default class Page {
 		);
 
 		const curve = this.getCurve();
+		this.curveVisualizer.update(curve);
 		const curveStretch = Math.max(curve.getLength() / this.width, 1);
 
 		const position = this.mesh.geometry.attributes.position;

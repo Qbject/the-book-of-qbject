@@ -88,6 +88,23 @@ export default class Flipbook {
 		this.textureUrls = params.textureUrls;
 		this.pageEdgeColor = params.pageEdgeColor;
 
+		this.scene = new THREE.Scene();
+		this.camera = new THREE.PerspectiveCamera(
+			20,
+			window.innerWidth / window.innerHeight,
+		);
+
+		this.renderer = new THREE.WebGLRenderer({ antialias: true });
+		this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+		// this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+		// this.renderer.toneMappingExposure = 1.2;
+		this.renderer.setPixelRatio(window.devicePixelRatio);
+		this.renderer.setSize(window.innerWidth, window.innerHeight);
+		this.renderer.shadowMap.enabled = true;
+		this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+		this.renderer.domElement.classList.add("flipbook-canvas");
+		this.containerEl.appendChild(this.renderer.domElement);
+
 		this.textureLoader = new THREE.TextureLoader();
 
 		// add pages
@@ -126,23 +143,6 @@ export default class Flipbook {
 			});
 			this.pages.push(page);
 		}
-
-		this.scene = new THREE.Scene();
-		this.camera = new THREE.PerspectiveCamera(
-			20,
-			window.innerWidth / window.innerHeight,
-		);
-
-		this.renderer = new THREE.WebGLRenderer({ antialias: true });
-		this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-		// this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-		// this.renderer.toneMappingExposure = 1.2;
-		this.renderer.setPixelRatio(window.devicePixelRatio);
-		this.renderer.setSize(window.innerWidth, window.innerHeight);
-		this.renderer.shadowMap.enabled = true;
-		this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-		this.renderer.domElement.classList.add("flipbook-canvas");
-		this.containerEl.appendChild(this.renderer.domElement);
 
 		this.ambientLight = new THREE.AmbientLight();
 		this.scene.add(this.ambientLight);
