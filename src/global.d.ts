@@ -30,9 +30,20 @@ type FlipbookSettings = {
 	spotLightX: number;
 	spotLightY: number;
 	spotLightZ: number;
+	spotLightColor: number;
+	spotLightIntensity: number;
+	spotLightAngle: number;
+	spotLightPenumbra: number;
+	spotLightDecay: number;
 	spotLightNearClip: number;
 	spotLightFarClip: number;
 	spotLightMapSize: number;
+
+	ambientLightColor: number;
+	ambientLightIntensity: number;
+
+	showSpotLightHelper: boolean;
+	showSpotShadowHelper: boolean;
 };
 
 type PageParams = {

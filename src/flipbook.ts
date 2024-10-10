@@ -18,17 +18,28 @@ export default class Flipbook {
 	private textureUrls;
 	private pageEdgeColor: number;
 	public readonly settings: FlipbookSettings = {
-		cameraAngle: 0,
-		cameraDistance: 2500,
+		cameraAngle: 0.35,
+		cameraDistance: 3150,
 		cameraNearClip: 2000,
-		cameraFarClip: 3000,
+		cameraFarClip: 4000,
 
-		spotLightX: 100,
+		spotLightX: 910,
 		spotLightY: 300,
-		spotLightZ: 1000,
+		spotLightZ: 1650,
+		spotLightColor: 0xffffff,
+		spotLightIntensity: 6684995,
+		spotLightAngle: 0.7,
+		spotLightPenumbra: 0.6,
+		spotLightDecay: 2,
 		spotLightNearClip: 500,
-		spotLightFarClip: 2000,
+		spotLightFarClip: 3500,
 		spotLightMapSize: 2048,
+
+		ambientLightColor: 0xffffff,
+		ambientLightIntensity: 0.4,
+
+		showSpotLightHelper: false,
+		showSpotShadowHelper: false,
 	};
 
 	private pages: Page[] = [];
@@ -61,8 +72,8 @@ export default class Flipbook {
 		inertia: number;
 	};
 	private lastGrabbedPageIndex?: number;
-	private spotLightHelper: THREE.SpotLightHelper;
-	private spotShadowHelper: THREE.CameraHelper;
+	private spotLightHelper: THREE.SpotLightHelper | null = null;
+	private spotShadowHelper: THREE.CameraHelper | null = null;
 	private textureLoader: THREE.TextureLoader;
 
 	constructor(params: FlipBookParams) {
@@ -133,21 +144,13 @@ export default class Flipbook {
 		this.renderer.domElement.classList.add("flipbook-canvas");
 		this.containerEl.appendChild(this.renderer.domElement);
 
-		this.ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+		this.ambientLight = new THREE.AmbientLight();
 		this.scene.add(this.ambientLight);
 
-		this.spotLight = new THREE.SpotLight(0xffffff, 2000000, 0, 0.6, 0.2);
+		this.spotLight = new THREE.SpotLight();
 		this.spotLight.castShadow = true;
 		this.spotLight.shadow.bias = -0.0001;
 		this.scene.add(this.spotLight);
-
-		this.spotLightHelper = new THREE.SpotLightHelper(this.spotLight);
-		// this.scene.add(this.spotLightHelper);
-
-		this.spotShadowHelper = new THREE.CameraHelper(
-			this.spotLight.shadow.camera,
-		);
-		// this.scene.add(this.spotShadowHelper);
 
 		// this.controls = new OrbitControls(
 		// 	this.camera,
@@ -253,9 +256,22 @@ export default class Flipbook {
 		spotLightPosFolder.add(this.settings, "spotLightX", -1000, 1000);
 		spotLightPosFolder.add(this.settings, "spotLightY", -1000, 1000);
 		spotLightPosFolder.add(this.settings, "spotLightZ", 0, 2000);
-		spotLightFolder.add(this.settings, "spotLightNearClip", 1, 2000);
-		spotLightFolder.add(this.settings, "spotLightFarClip", 1, 2000);
+		spotLightFolder.addColor(this.settings, "spotLightColor");
+		spotLightFolder.add(this.settings, "spotLightIntensity", 0, 10000000);
+		spotLightFolder.add(this.settings, "spotLightAngle", 0, Math.PI);
+		spotLightFolder.add(this.settings, "spotLightPenumbra", 0, 1);
+		spotLightFolder.add(this.settings, "spotLightDecay", 0, 10);
+		spotLightFolder.add(this.settings, "spotLightNearClip", 1, 4000);
+		spotLightFolder.add(this.settings, "spotLightFarClip", 1, 4000);
 		spotLightFolder.add(this.settings, "spotLightMapSize", 0, 4096);
+
+		const ambientLightFolder = this.datGui.addFolder("Ambient Light");
+		ambientLightFolder.addColor(this.settings, "ambientLightColor");
+		ambientLightFolder.add(this.settings, "ambientLightIntensity", 0, 1);
+
+		const helpersFolder = this.datGui.addFolder("Helpers");
+		helpersFolder.add(this.settings, "showSpotLightHelper");
+		helpersFolder.add(this.settings, "showSpotShadowHelper");
 
 		const addChangeListeners = (gui: dat.GUI): void => {
 			gui.__controllers.forEach((controller: dat.GUIController) => {
@@ -521,8 +537,30 @@ export default class Flipbook {
 			);
 			this.spotLight.lookAt(new THREE.Vector3());
 
-			this.spotLightHelper.update();
-			this.spotShadowHelper.update();
+			this.spotLightHelper?.update();
+			this.spotShadowHelper?.update();
+		}
+
+		if (newSettings.spotLightColor) {
+			this.spotLight.color = new THREE.Color(
+				this.settings.spotLightColor,
+			);
+		}
+
+		if (newSettings.spotLightIntensity) {
+			this.spotLight.intensity = this.settings.spotLightIntensity;
+		}
+
+		if (newSettings.spotLightAngle) {
+			this.spotLight.angle = this.settings.spotLightAngle;
+		}
+
+		if (newSettings.spotLightPenumbra) {
+			this.spotLight.penumbra = this.settings.spotLightPenumbra;
+		}
+
+		if (newSettings.spotLightDecay) {
+			this.spotLight.decay = this.settings.spotLightDecay;
 		}
 
 		if (newSettings.spotLightNearClip || newSettings.spotLightFarClip) {
@@ -537,6 +575,42 @@ export default class Flipbook {
 			this.spotLight.shadow.map?.dispose?.();
 			this.spotLight.shadow.map = null;
 			this.spotLight.shadow.needsUpdate = true;
+		}
+
+		if (newSettings.ambientLightColor) {
+			this.ambientLight.color = new THREE.Color(
+				this.settings.ambientLightColor,
+			);
+		}
+
+		if (newSettings.ambientLightIntensity) {
+			this.ambientLight.intensity = this.settings.ambientLightIntensity;
+		}
+
+		if (typeof newSettings.showSpotLightHelper !== "undefined") {
+			if (this.spotLightHelper && !newSettings.showSpotLightHelper) {
+				this.scene.remove(this.spotLightHelper);
+				this.spotLightHelper = null;
+			}
+			if (!this.spotLightHelper && newSettings.showSpotLightHelper) {
+				this.spotLightHelper = new THREE.SpotLightHelper(
+					this.spotLight,
+				);
+				this.scene.add(this.spotLightHelper);
+			}
+		}
+
+		if (typeof newSettings.showSpotShadowHelper !== "undefined") {
+			if (this.spotShadowHelper && !newSettings.showSpotShadowHelper) {
+				this.scene.remove(this.spotShadowHelper);
+				this.spotShadowHelper = null;
+			}
+			if (!this.spotShadowHelper && newSettings.showSpotShadowHelper) {
+				this.spotShadowHelper = new THREE.CameraHelper(
+					this.spotLight.shadow.camera,
+				);
+				this.scene.add(this.spotShadowHelper);
+			}
 		}
 	}
 

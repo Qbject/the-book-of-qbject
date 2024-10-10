@@ -157,7 +157,7 @@ export default class Page {
 			return new THREE.QuadraticBezierCurve(p0, p1, p2);
 		} else {
 			// TODO: move to this.elevationLeft/Right
-			const baseElevation = 20;
+			const baseElevation = 30;
 
 			const elevationShift =
 				cosineInterpolate(
