@@ -98,7 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
 			pageRootThickness: 5,
 			pageThickness: 2,
 			coverMarginX: 8,
-			coverMarginY: 8,
+			coverMarginY: 10,
 		});
 	} else {
 		console.error("No container element found");
