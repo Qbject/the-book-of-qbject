@@ -8,3 +8,7 @@ body {
 	top: 0;
 	left: 0;
 }
+
+.wrapper-link {
+	display: block;
+}

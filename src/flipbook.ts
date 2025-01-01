@@ -8,6 +8,7 @@ import * as dat from "dat.gui";
 
 export default class Flipbook {
 	private containerEl: HTMLElement;
+	private wrapperLinkEl: HTMLElement;
 	private pageWidth: number;
 	private pageHeight: number;
 	private pageThickness: number;
@@ -16,6 +17,7 @@ export default class Flipbook {
 	private coverMarginX: number;
 	private coverMarginY: number;
 	private textureUrls;
+	private pageActiveAreas: PageActiveArea[] = [];
 	private pageEdgeColor: number;
 	public readonly settings: FlipbookSettings = {
 		cameraAngle: 0.35,
@@ -50,6 +52,8 @@ export default class Flipbook {
 	private spineMesh: THREE.Mesh;
 	private spotLight: THREE.SpotLight;
 	private ambientLight: THREE.AmbientLight;
+	private raycaster: THREE.Raycaster;
+	private sceneMousePos: THREE.Vector2;
 
 	private progress = 0;
 	private spineWidth: number;
@@ -75,6 +79,7 @@ export default class Flipbook {
 	private spotLightHelper: THREE.SpotLightHelper | null = null;
 	private spotShadowHelper: THREE.CameraHelper | null = null;
 	private textureLoader: THREE.TextureLoader;
+	private initCompleted: boolean = false;
 
 	constructor(params: FlipBookParams) {
 		this.containerEl = params.containerEl;
@@ -87,6 +92,7 @@ export default class Flipbook {
 		this.coverMarginY = params.coverMarginY || 8;
 		this.textureUrls = params.textureUrls;
 		this.pageEdgeColor = params.pageEdgeColor;
+		this.pageActiveAreas = params.pageActiveAreas || [];
 
 		this.scene = new THREE.Scene();
 		this.camera = new THREE.PerspectiveCamera(
@@ -103,9 +109,17 @@ export default class Flipbook {
 		this.renderer.shadowMap.enabled = true;
 		this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 		this.renderer.domElement.classList.add("flipbook-canvas");
-		this.containerEl.appendChild(this.renderer.domElement);
+		this.wrapperLinkEl = document.createElement("a");
+		this.wrapperLinkEl.draggable = false;
+		this.wrapperLinkEl.classList.add("wrapper-link");
+		this.wrapperLinkEl.setAttribute("target", "_blank");
+		this.containerEl.appendChild(this.wrapperLinkEl);
+		this.wrapperLinkEl.appendChild(this.renderer.domElement);
 
 		this.textureLoader = new THREE.TextureLoader();
+
+		this.raycaster = new THREE.Raycaster();
+		this.sceneMousePos = new THREE.Vector2();
 
 		// add pages
 		const totalPages = Math.ceil(this.textureUrls.pages.length / 2);
@@ -371,10 +385,26 @@ export default class Flipbook {
 		});
 
 		this.renderer.domElement.addEventListener("mousemove", event => {
-			if (!this.curDrag || this.curDrag.touchId) return;
+			if (this.curDrag && !this.curDrag.touchId) {
+				this.curDrag.x = event.clientX;
+				this.curDrag.y = event.clientY;
+			}
 
-			this.curDrag.x = event.clientX;
-			this.curDrag.y = event.clientY;
+			// process interactive areas
+			this.sceneMousePos.x = (event.clientX / window.innerWidth) * 2 - 1;
+			this.sceneMousePos.y =
+				-(event.clientY / window.innerHeight) * 2 + 1;
+			const activeArea = this.getActiveAreaAt(this.sceneMousePos);
+			this.containerEl.style.cursor = activeArea ? "pointer" : "";
+			this.containerEl.title = activeArea?.title || "";
+
+			if (activeArea?.link) {
+				let href = activeArea.link;
+				if (typeof href !== "string") href = href();
+				this.wrapperLinkEl.setAttribute("href", href);
+			} else {
+				this.wrapperLinkEl.removeAttribute("href");
+			}
 		});
 
 		this.renderer.domElement.addEventListener("mouseup", () => {
@@ -407,6 +437,7 @@ export default class Flipbook {
 
 	private update(dt: number) {
 		if (!dt) return;
+		this.initCompleted = true;
 
 		if (this.curDrag) {
 			const deltaX = this.curDrag.x - this.curDrag.prevX;
@@ -648,6 +679,47 @@ export default class Flipbook {
 				this.scene.add(this.spotShadowHelper);
 			}
 		}
+	}
+
+	public getActiveAreaAt(scenePos: THREE.Vector2) {
+		if (!this.initCompleted) return;
+		if (this.curTurn) return;
+
+		const pr = Math.round(this.progress);
+		const topPageIndices = [];
+		if (pr !== 0) topPageIndices.push(pr - 1);
+		if (pr !== this.pages.length) topPageIndices.push(pr);
+
+		this.raycaster.setFromCamera(scenePos, this.camera);
+		const intersects = this.raycaster.intersectObjects(
+			topPageIndices.map(i => this.pages[i].mesh),
+		);
+		if (!intersects.length) return;
+
+		const hoverPageIndex = topPageIndices.find(
+			i => this.pages[i].mesh === intersects[0].object,
+		);
+		if (typeof hoverPageIndex !== "number") return;
+
+		let hoverFaceIndex;
+		if (intersects[0].face?.materialIndex === 1) {
+			hoverFaceIndex = hoverPageIndex * 2;
+		} else if (intersects[0].face?.materialIndex === 0) {
+			hoverFaceIndex = hoverPageIndex * 2 + 1;
+		} else {
+			return;
+		}
+
+		const faceX = intersects[0].uv?.x || 0;
+		const faceY = 1 - (intersects[0].uv?.y || 0);
+		return this.pageActiveAreas.find(
+			area =>
+				area.faceIndex === hoverFaceIndex &&
+				faceY > area.top &&
+				faceY < area.top + area.height &&
+				faceX > area.left &&
+				faceX < area.left + area.width,
+		);
 	}
 
 	public animateCameraShift(

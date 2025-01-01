@@ -20,6 +20,7 @@ type FlipBookParams = {
 		desk: string;
 	};
 	settings?: Partial<FlipbookSettings>;
+	pageActiveAreas?: PageActiveArea[];
 };
 
 type FlipbookSettings = {
@@ -72,4 +73,19 @@ type PageControlPointParams = {
 type PageControlPoint = {
 	x: number;
 	z: number;
+};
+
+type PageArea = {
+	left: number;
+	top: number;
+	width: number;
+	height: number;
+};
+
+type PageActiveArea = PageArea & {
+	faceIndex: number;
+	title?: string;
+	link?: string | (() => string);
+	video?: string;
+	iframe?: string;
 };
