@@ -17,6 +17,7 @@ type FlipBookParams = {
 		coverEdgeLR: string;
 		spineEdgeTB: string;
 		spineEdgeLR: string;
+		desk: string;
 	};
 	settings?: Partial<FlipbookSettings>;
 };

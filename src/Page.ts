@@ -22,8 +22,8 @@ export default class Page {
 	public mesh: THREE.Mesh;
 	public pivot: THREE.Group;
 
-	private turnProgress: number = 0;
-	private turnProgressLag: number = 0;
+	public turnProgress: number = 0;
+	public turnProgressLag: number = 0;
 	private xSegments = 1;
 	private ySegments = 1;
 	private zSegments = 20;
@@ -53,6 +53,9 @@ export default class Page {
 		const _texture = (url: string) => {
 			const texture = this.textureLoader.load(url);
 			texture.colorSpace = THREE.SRGBColorSpace;
+			texture.minFilter = THREE.LinearFilter;
+			texture.generateMipmaps = false;
+			// texture.anisotropy = 16;
 			return { map: texture };
 		};
 		const _color = (hex: number) => ({
@@ -207,7 +210,7 @@ export default class Page {
 		);
 
 		const curve = this.getCurve();
-		this.curveVisualizer.update(curve);
+		// this.curveVisualizer.update(curve);
 		const curveStretch = Math.max(curve.getLength() / this.width, 1);
 
 		const position = this.mesh.geometry.attributes.position;

@@ -36,7 +36,7 @@ export default class Flipbook {
 		spotLightMapSize: 2048,
 
 		ambientLightColor: 0xffffff,
-		ambientLightIntensity: 0.4,
+		ambientLightIntensity: 0.1,
 
 		showSpotLightHelper: false,
 		showSpotShadowHelper: false,
@@ -223,8 +223,8 @@ export default class Flipbook {
 		});
 
 		// create desk
-		const deskGeometry = new THREE.PlaneGeometry(2000, 2000, 1, 1);
-		const deskTexture = this.textureLoader.load("/img/desk.jpg");
+		const deskGeometry = new THREE.PlaneGeometry(3000, 2250, 1, 1);
+		const deskTexture = this.textureLoader.load(this.textureUrls.desk);
 		deskTexture.colorSpace = THREE.SRGBColorSpace;
 		const deskMaterial = new THREE.MeshStandardMaterial({
 			map: deskTexture,
@@ -296,6 +296,29 @@ export default class Flipbook {
 		);
 		this.addTouchListeners();
 		this.addMouseListeners();
+
+		this.containerEl.addEventListener("dblclick", () => {
+			if (!document.fullscreenElement) {
+				if (this.containerEl.requestFullscreen) {
+					this.containerEl.requestFullscreen().catch(err => {
+						console.error(
+							"Failed to enter a full-screen mode",
+							err,
+						);
+					});
+				} else {
+					console.error(
+						"Fullscreen API is not supported in this browser.",
+					);
+				}
+			} else {
+				if (document.exitFullscreen) {
+					document.exitFullscreen().catch(err => {
+						console.error("Failed to exit a full-screen mode", err);
+					});
+				}
+			}
+		});
 
 		// main loop
 		this.runAnimation();
@@ -441,7 +464,20 @@ export default class Flipbook {
 			1,
 		);
 
+		// TODO:
+		// calculating visual turn progress to timely hide shadows
+		// const topPage = this.pages[Math.max(Math.ceil(this.progress) - 1, 0)];
+		// const visualProgress =
+		// 	this.progress +
+		// 	(topPage.turnProgress - topPage.turnProgressLag) * 0.5;
+
 		this.pages.forEach((page, index) => {
+			// toggle shadow
+			if (index && index < this.pages.length - 1) {
+				// TODO:
+				// page.mesh.castShadow = visualProgress < index + 1.9;
+			}
+
 			let tp;
 			if (index >= this.progress) {
 				tp = bookOpenFactor;
