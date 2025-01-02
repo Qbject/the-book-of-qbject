@@ -216,6 +216,14 @@ document.addEventListener("DOMContentLoaded", () => {
 					width: 143 / pageWidth,
 					height: 50 / pageHeight,
 				},
+				{
+					faceIndex: 19,
+					video: ".",
+					top: 364 / pageHeight,
+					left: 75 / pageWidth,
+					width: 615 / pageWidth,
+					height: 416 / pageHeight,
+				},
 			],
 		});
 	} else {

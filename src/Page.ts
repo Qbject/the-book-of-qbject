@@ -262,4 +262,29 @@ export default class Page {
 		const turnProgress = this.turnProgress + 1 / 2;
 		return lerp(this.elevationLeft, this.elevationRight, turnProgress);
 	}
+
+	public getPageAreaCorners(area: PageArea) {
+		const curve = this.getCurve();
+		const curveStretch = Math.max(curve.getLength() / this.width, 1);
+		const unstretch = 1 / curveStretch;
+
+		const [lx, lz] = curve.getPointAt(area.left * unstretch);
+		const [rx, rz] = curve.getPointAt((area.left + area.width) * unstretch);
+
+		const ty = (area.top - 0.5) * -this.height;
+		const by = (area.top + area.height - 0.5) * -this.height;
+
+		const cornerTL = new THREE.Vector3(lx, ty, lz);
+		const cornerTR = new THREE.Vector3(rx, ty, rz);
+		const cornerBL = new THREE.Vector3(lx, by, lz);
+		const cornerBR = new THREE.Vector3(rx, by, rz);
+
+		// Transform corners to global space
+		this.pivot.localToWorld(cornerTL);
+		this.pivot.localToWorld(cornerTR);
+		this.pivot.localToWorld(cornerBL);
+		this.pivot.localToWorld(cornerBR);
+
+		return [cornerTL, cornerTR, cornerBL, cornerBR];
+	}
 }

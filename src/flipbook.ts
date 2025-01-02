@@ -22,7 +22,7 @@ export default class Flipbook {
 	public readonly settings: FlipbookSettings = {
 		cameraAngle: 0.35,
 		cameraDistance: 3150,
-		cameraNearClip: 2000,
+		cameraNearClip: 10,
 		cameraFarClip: 4000,
 
 		spotLightX: 910,
@@ -310,6 +310,17 @@ export default class Flipbook {
 		);
 		this.addTouchListeners();
 		this.addMouseListeners();
+
+		this.containerEl.addEventListener("click", event => {
+			this.sceneMousePos.x = (event.clientX / window.innerWidth) * 2 - 1;
+			this.sceneMousePos.y =
+				-(event.clientY / window.innerHeight) * 2 + 1;
+			const activeArea = this.getActiveAreaAt(this.sceneMousePos);
+
+			if (activeArea?.video) {
+				this.watchActiveArea(activeArea);
+			}
+		});
 
 		this.containerEl.addEventListener("dblclick", () => {
 			if (!document.fullscreenElement) {
@@ -720,6 +731,52 @@ export default class Flipbook {
 				faceX > area.left &&
 				faceX < area.left + area.width,
 		);
+	}
+
+	public watchRectangle(corners: THREE.Vector3[], backside: boolean = false) {
+		// Assumes corners is an array of THREE.Vector3 in TL, TR, BL, BR order
+		const [TL, TR, BL, BR] = corners;
+
+		// Calculate center of rectangle
+		const center = new THREE.Vector3()
+			.addVectors(TL, TR)
+			.add(BL)
+			.add(BR)
+			.multiplyScalar(0.25);
+
+		// Calculate normal using cross product of diagonals
+		let v1 = new THREE.Vector3().subVectors(BL, TR);
+		let v2 = new THREE.Vector3().subVectors(BR, TL);
+		if (backside) [v1, v2] = [v2, v1];
+		const normal = new THREE.Vector3().crossVectors(v1, v2).normalize();
+
+		// Calculate width and height of the rectangle
+		const width = TL.distanceTo(TR);
+		const height = TL.distanceTo(BL);
+
+		// Calculate distance using camera's FOV and aspect ratio
+		const fovYRadians = THREE.MathUtils.degToRad(this.camera.fov);
+		const aspect = this.camera.aspect;
+		const hFOV = 2 * Math.atan(Math.tan(fovYRadians / 2) * aspect);
+
+		const distanceH = width / 2 / Math.tan(hFOV / 2);
+		const distanceV = height / 2 / Math.tan(fovYRadians / 2);
+		const distance = Math.max(distanceH, distanceV);
+
+		// Position the camera
+		// TODO: gsap
+		this.camera.position.set(
+			center.x + normal.x * distance,
+			center.y + normal.y * distance,
+			center.z + normal.z * distance,
+		);
+		this.camera.lookAt(center);
+	}
+
+	public watchActiveArea(area: PageActiveArea) {
+		const page = this.pages[Math.floor(area.faceIndex / 2)];
+		const corners = page.getPageAreaCorners(area);
+		this.watchRectangle(corners, area.faceIndex % 2 === 1);
 	}
 
 	public animateCameraShift(
