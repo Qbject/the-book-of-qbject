@@ -734,10 +734,8 @@ export default class Flipbook {
 	}
 
 	public watchRectangle(corners: THREE.Vector3[], backside: boolean = false) {
-		// Assumes corners is an array of THREE.Vector3 in TL, TR, BL, BR order
 		const [TL, TR, BL, BR] = corners;
 
-		// Calculate center of rectangle
 		const center = new THREE.Vector3()
 			.addVectors(TL, TR)
 			.add(BL)
@@ -747,10 +745,9 @@ export default class Flipbook {
 		// Calculate normal using cross product of diagonals
 		let v1 = new THREE.Vector3().subVectors(BL, TR);
 		let v2 = new THREE.Vector3().subVectors(BR, TL);
-		if (backside) [v1, v2] = [v2, v1];
 		const normal = new THREE.Vector3().crossVectors(v1, v2).normalize();
+		if (backside) normal.negate();
 
-		// Calculate width and height of the rectangle
 		const width = TL.distanceTo(TR);
 		const height = TL.distanceTo(BL);
 
@@ -763,7 +760,6 @@ export default class Flipbook {
 		const distanceV = height / 2 / Math.tan(fovYRadians / 2);
 		const distance = Math.max(distanceH, distanceV);
 
-		// Position the camera
 		// TODO: gsap
 		this.camera.position.set(
 			center.x + normal.x * distance,
