@@ -760,50 +760,53 @@ export default class Flipbook {
 		const distanceV = height / 2 / Math.tan(fovYRadians / 2);
 		const distance = Math.max(distanceH, distanceV);
 
-		// TODO: gsap
-		this.camera.position.set(
-			center.x + normal.x * distance,
-			center.y + normal.y * distance,
-			center.z + normal.z * distance,
+		const targetPosition = {
+			x: center.x + normal.x * distance,
+			y: center.y + normal.y * distance,
+			z: center.z + normal.z * distance,
+		};
+
+		// Calculate the quaternion for the target rotation
+		const targetQuaternion = new THREE.Quaternion();
+		const targetDirection = new THREE.Vector3()
+			.subVectors(center, targetPosition)
+			.normalize();
+		targetQuaternion.setFromUnitVectors(
+			new THREE.Vector3(0, 0, -1),
+			targetDirection,
 		);
-		this.camera.lookAt(center);
+
+		gsap.to(this.camera.position, {
+			x: targetPosition.x,
+			duration: 0.8,
+			ease: "power2.inOut",
+		});
+
+		gsap.to(this.camera.position, {
+			y: targetPosition.y,
+			duration: 0.8,
+			ease: "power2.inOut",
+		});
+
+		gsap.to(this.camera.position, {
+			z: targetPosition.z + 100,
+			duration: 1.1,
+			ease: "power2.inOut",
+		});
+
+		gsap.to(this.camera.quaternion, {
+			x: targetQuaternion.x,
+			y: targetQuaternion.y,
+			z: targetQuaternion.z,
+			w: targetQuaternion.w,
+			duration: 0.8,
+			ease: "power2.inOut",
+		});
 	}
 
 	public watchActiveArea(area: PageActiveArea) {
 		const page = this.pages[Math.floor(area.faceIndex / 2)];
 		const corners = page.getPageAreaCorners(area);
 		this.watchRectangle(corners, area.faceIndex % 2 === 1);
-	}
-
-	public animateCameraShift(
-		targetX: number,
-		targetY: number,
-		duration: number = 2,
-	) {
-		gsap.to(this.camera.position, {
-			x: targetX,
-			y: targetY,
-			duration: duration,
-			ease: "power2.inOut",
-		});
-	}
-
-	public animateCameraScale(targetZ: number, duration: number = 2) {
-		gsap.to(this.camera.position, {
-			z: targetZ,
-			duration: duration,
-			ease: "power2.inOut",
-		});
-	}
-
-	public animateCameraRotation(
-		targetRotationY: number,
-		duration: number = 2,
-	) {
-		gsap.to(this.camera.rotation, {
-			y: targetRotationY,
-			duration: duration,
-			ease: "power2.inOut",
-		});
 	}
 }
