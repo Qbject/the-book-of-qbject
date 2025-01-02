@@ -242,6 +242,7 @@ export default class Page {
 		position.needsUpdate = true;
 		// TODO: calculate normals manually?
 		this.mesh.geometry.computeVertexNormals();
+		this.mesh.geometry.computeBoundingSphere();
 	}
 
 	public setTurnProgress(turnProgress: number) {
