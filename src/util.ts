@@ -62,3 +62,7 @@ export function approach(
 	val += change;
 	return val;
 }
+
+export function sleep(ms: number) {
+	return new Promise(resolve => setTimeout(resolve, ms));
+}

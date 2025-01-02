@@ -218,7 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
 				},
 				{
 					faceIndex: 19,
-					video: ".",
+					video: "/video/qyou-demo.mp4",
 					top: 364 / pageHeight,
 					left: 75 / pageWidth,
 					width: 615 / pageWidth,

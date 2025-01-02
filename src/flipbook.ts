@@ -1,10 +1,11 @@
 import * as THREE from "three";
 import { gsap } from "gsap";
-import { clamp, rotateY } from "./util";
+import { clamp, rotateY, sleep } from "./util";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "stats.js";
 import Page from "./Page";
 import * as dat from "dat.gui";
+import VideoOverlay from "./video-overlay";
 
 export default class Flipbook {
 	private containerEl: HTMLElement;
@@ -80,6 +81,7 @@ export default class Flipbook {
 	private spotShadowHelper: THREE.CameraHelper | null = null;
 	private textureLoader: THREE.TextureLoader;
 	private initCompleted: boolean = false;
+	private videoOverlay: VideoOverlay;
 
 	constructor(params: FlipBookParams) {
 		this.containerEl = params.containerEl;
@@ -93,6 +95,8 @@ export default class Flipbook {
 		this.textureUrls = params.textureUrls;
 		this.pageEdgeColor = params.pageEdgeColor;
 		this.pageActiveAreas = params.pageActiveAreas || [];
+
+		this.videoOverlay = new VideoOverlay(this.containerEl);
 
 		this.scene = new THREE.Scene();
 		this.camera = new THREE.PerspectiveCamera(
@@ -318,7 +322,11 @@ export default class Flipbook {
 			const activeArea = this.getActiveAreaAt(this.sceneMousePos);
 
 			if (activeArea?.video) {
+				const videoLink = activeArea.video;
 				this.watchActiveArea(activeArea);
+				sleep(0.8).then(() => {
+					this.videoOverlay.open(videoLink);
+				});
 			}
 		});
 
@@ -804,7 +812,7 @@ export default class Flipbook {
 		});
 	}
 
-	public watchActiveArea(area: PageActiveArea) {
+	public async watchActiveArea(area: PageActiveArea) {
 		const page = this.pages[Math.floor(area.faceIndex / 2)];
 		const corners = page.getPageAreaCorners(area);
 		this.watchRectangle(corners, area.faceIndex % 2 === 1);
