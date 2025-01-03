@@ -97,6 +97,9 @@ export default class Flipbook {
 		this.pageActiveAreas = params.pageActiveAreas || [];
 
 		this.videoOverlay = new VideoOverlay(this.containerEl);
+		this.pageActiveAreas.forEach(area =>
+			this.videoOverlay.addVideo(area?.video),
+		);
 
 		this.scene = new THREE.Scene();
 		this.camera = new THREE.PerspectiveCamera(
@@ -315,7 +318,7 @@ export default class Flipbook {
 		this.addTouchListeners();
 		this.addMouseListeners();
 
-		this.containerEl.addEventListener("click", event => {
+		this.renderer.domElement.addEventListener("click", event => {
 			this.sceneMousePos.x = (event.clientX / window.innerWidth) * 2 - 1;
 			this.sceneMousePos.y =
 				-(event.clientY / window.innerHeight) * 2 + 1;
@@ -324,13 +327,13 @@ export default class Flipbook {
 			if (activeArea?.video) {
 				const videoLink = activeArea.video;
 				this.watchActiveArea(activeArea);
-				sleep(0.8).then(() => {
+				sleep(800).then(() => {
 					this.videoOverlay.open(videoLink);
 				});
 			}
 		});
 
-		this.containerEl.addEventListener("dblclick", () => {
+		this.renderer.domElement.addEventListener("dblclick", () => {
 			if (!document.fullscreenElement) {
 				if (this.containerEl.requestFullscreen) {
 					this.containerEl.requestFullscreen().catch(err => {
@@ -414,8 +417,8 @@ export default class Flipbook {
 			this.sceneMousePos.y =
 				-(event.clientY / window.innerHeight) * 2 + 1;
 			const activeArea = this.getActiveAreaAt(this.sceneMousePos);
-			this.containerEl.style.cursor = activeArea ? "pointer" : "";
-			this.containerEl.title = activeArea?.title || "";
+			this.wrapperLinkEl.style.cursor = activeArea ? "pointer" : "";
+			this.wrapperLinkEl.title = activeArea?.title || "";
 
 			if (activeArea?.link) {
 				let href = activeArea.link;
@@ -741,7 +744,11 @@ export default class Flipbook {
 		);
 	}
 
-	public watchRectangle(corners: THREE.Vector3[], backside: boolean = false) {
+	public watchRectangle(
+		corners: THREE.Vector3[],
+		backside: boolean = false,
+		distanceMultiplier: number = 1,
+	) {
 		const [TL, TR, BL, BR] = corners;
 
 		const center = new THREE.Vector3()
@@ -766,7 +773,7 @@ export default class Flipbook {
 
 		const distanceH = width / 2 / Math.tan(hFOV / 2);
 		const distanceV = height / 2 / Math.tan(fovYRadians / 2);
-		const distance = Math.max(distanceH, distanceV);
+		const distance = Math.max(distanceH, distanceV) * distanceMultiplier;
 
 		const targetPosition = {
 			x: center.x + normal.x * distance,
@@ -797,7 +804,7 @@ export default class Flipbook {
 		});
 
 		gsap.to(this.camera.position, {
-			z: targetPosition.z + 100,
+			z: targetPosition.z,
 			duration: 1.1,
 			ease: "power2.inOut",
 		});
@@ -815,6 +822,6 @@ export default class Flipbook {
 	public async watchActiveArea(area: PageActiveArea) {
 		const page = this.pages[Math.floor(area.faceIndex / 2)];
 		const corners = page.getPageAreaCorners(area);
-		this.watchRectangle(corners, area.faceIndex % 2 === 1);
+		this.watchRectangle(corners, area.faceIndex % 2 === 1, 1.125);
 	}
 }
