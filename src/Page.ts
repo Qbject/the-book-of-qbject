@@ -264,16 +264,22 @@ export default class Page {
 		return lerp(this.elevationLeft, this.elevationRight, turnProgress);
 	}
 
-	public getPageAreaCorners(area: PageArea) {
+	public getPageAreaCorners(area: PageArea, backside = false) {
+		const top = area.top;
+		const bottom = area.top + area.height;
+		let left = area.left;
+		let right = area.left + area.width;
+		if (backside) [left, right] = [1 - left, 1 - right];
+
 		const curve = this.getCurve();
 		const curveStretch = Math.max(curve.getLength() / this.width, 1);
 		const unstretch = 1 / curveStretch;
 
-		const [lx, lz] = curve.getPointAt(area.left * unstretch);
-		const [rx, rz] = curve.getPointAt((area.left + area.width) * unstretch);
+		const [lx, lz] = curve.getPointAt(left * unstretch);
+		const [rx, rz] = curve.getPointAt(right * unstretch);
 
-		const ty = (area.top - 0.5) * -this.height;
-		const by = (area.top + area.height - 0.5) * -this.height;
+		const ty = (top - 0.5) * -this.height;
+		const by = (bottom - 0.5) * -this.height;
 
 		const cornerTL = new THREE.Vector3(lx, ty, lz);
 		const cornerTR = new THREE.Vector3(rx, ty, rz);

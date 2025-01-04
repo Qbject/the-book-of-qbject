@@ -748,7 +748,6 @@ export default class Flipbook {
 
 	public watchRectangle(
 		corners: THREE.Vector3[],
-		backside: boolean = false,
 		distanceMultiplier: number = 1,
 	) {
 		const [TL, TR, BL, BR] = corners;
@@ -763,7 +762,6 @@ export default class Flipbook {
 		let v1 = new THREE.Vector3().subVectors(BL, TR);
 		let v2 = new THREE.Vector3().subVectors(BR, TL);
 		const normal = new THREE.Vector3().crossVectors(v1, v2).normalize();
-		if (backside) normal.negate();
 
 		const width = TL.distanceTo(TR);
 		const height = TL.distanceTo(BL);
@@ -823,8 +821,8 @@ export default class Flipbook {
 
 	public async watchActiveArea(area: PageActiveArea) {
 		const page = this.pages[Math.floor(area.faceIndex / 2)];
-		const corners = page.getPageAreaCorners(area);
-		this.watchRectangle(corners, area.faceIndex % 2 === 1, 1.125);
+		const corners = page.getPageAreaCorners(area, area.faceIndex % 2 === 1);
+		this.watchRectangle(corners, 1.125);
 	}
 
 	public async restoreCamera() {
