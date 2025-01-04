@@ -31,14 +31,11 @@ body {
 	transition-timing-function: ease-out;
 }
 
-.video-overlay > video {
+.video-overlay > .video-wrapper {
 	position: absolute;
 	top: 50%;
 	left: 50%;
 	z-index: 1;
-	max-width: 90vw;
-	max-height: 90vh;
-	min-height: 90vh;
 	transform: translateX(-50%) translateY(-50%) scale(0.965);
 	transition-property: transform, opacity;
 	transition-duration: 300ms;
@@ -47,12 +44,18 @@ body {
 	pointer-events: none;
 }
 
-.video-overlay.active > video {
+.video-overlay > .video-wrapper > video {
+	max-width: 90vw;
+	max-height: 90vh;
+	min-height: 90vh;
+}
+
+.video-overlay.active > .video-wrapper {
 	transition-delay: 800ms;
 	transition-timing-function: ease-out;
 }
 
-.video-overlay > video.active {
+.video-overlay > .video-wrapper.active {
 	transform: translateX(-50%) translateY(-50%) scale(1);
 	opacity: 1;
 	pointer-events: all;

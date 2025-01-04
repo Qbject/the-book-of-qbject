@@ -37,7 +37,7 @@ export default class VideoOverlay {
 		this.addVideo(videoUrl);
 		this.dom.container.classList.toggle("active", true);
 		this.activeVideo = this.dom.videos[videoUrl];
-		this.activeVideo.classList.toggle("active", true);
+		this.activeVideo.parentElement?.classList.toggle("active", true);
 		this.activeVideo.currentTime = 0;
 		this.activeVideo.play();
 	}
@@ -46,7 +46,7 @@ export default class VideoOverlay {
 		if (!this.activeVideo) return;
 
 		this.dom.container.classList.toggle("active", false);
-		this.activeVideo.classList.toggle("active", false);
+		this.activeVideo.parentElement?.classList.toggle("active", false);
 		this.activeVideo.pause();
 		this.activeVideo = null;
 	}
@@ -54,8 +54,11 @@ export default class VideoOverlay {
 	public addVideo(src?: string) {
 		if (!src || this.dom.videos[src]) return;
 
+		const videoWrapper = document.createElement("div");
+		videoWrapper.classList.add("video-wrapper");
 		const video = (this.dom.videos[src] = document.createElement("video"));
-		this.dom.container.append(video);
+		this.dom.container.append(videoWrapper);
+		videoWrapper.append(video);
 
 		video.src = src;
 		video.controls = true;

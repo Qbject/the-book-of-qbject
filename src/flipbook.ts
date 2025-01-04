@@ -590,14 +590,19 @@ export default class Flipbook {
 		this.group.position.z = newPoint.z;
 
 		if (!this.focusedActiveArea || this.isChangingFocus) {
-			this.renderer.render(this.scene, this.camera);
+			this.render();
 		}
+	}
+
+	private render() {
+		this.renderer.render(this.scene, this.camera);
 	}
 
 	private onWindowResize() {
 		this.camera.aspect = window.innerWidth / window.innerHeight;
 		this.camera.updateProjectionMatrix();
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
+		this.render();
 	}
 
 	public applySettings(
