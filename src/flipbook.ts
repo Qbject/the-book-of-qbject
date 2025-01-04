@@ -339,7 +339,7 @@ export default class Flipbook {
 			this.onBookClick(this.sceneMousePos);
 		});
 
-		this.renderer.domElement.addEventListener("dblclick", () => {
+		this.wrapperLinkEl.addEventListener("dblclick", () => {
 			if (!document.fullscreenElement) {
 				if (this.containerEl.requestFullscreen) {
 					this.containerEl.requestFullscreen().catch(err => {
