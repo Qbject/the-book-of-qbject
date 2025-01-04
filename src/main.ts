@@ -58,7 +58,7 @@ document.addEventListener("DOMContentLoaded", () => {
 				coverEdgeLR: "/img/pages/cover-edge-lr.jpg",
 				spineEdgeTB: "/img/pages/cover-edge-tb.jpg", // TODO:
 				spineEdgeLR: "/img/pages/cover-edge-tb.jpg",
-				desk: "/img/desk/5-resized.jpg",
+				desk: "/img/desk/desk.jpg",
 			},
 			pageEdgeColor: 0xdbc9a2,
 			pageWidth,
