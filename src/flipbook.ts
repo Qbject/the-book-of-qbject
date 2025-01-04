@@ -734,6 +734,12 @@ export default class Flipbook {
 		);
 		if (typeof hoverPageIndex !== "number") return;
 
+		const hoverPage = this.pages[hoverPageIndex];
+		const hoverPageBend = Math.abs(
+			hoverPage.turnProgress - hoverPage.turnProgressLag,
+		);
+		if (hoverPageBend > 0.01) return;
+
 		let hoverFaceIndex;
 		if (intersects[0].face?.materialIndex === 1) {
 			hoverFaceIndex = hoverPageIndex * 2;
