@@ -298,6 +298,15 @@ document.addEventListener("DOMContentLoaded", () => {
 					title: "Watch Fifteen.js usage and features",
 				},
 				{
+					faceIndex: 30,
+					video: "/video/the-book-demo.mp4",
+					top: 442 / pageHeight,
+					left: 50 / pageWidth,
+					width: 664 / pageWidth,
+					height: 373 / pageHeight,
+					title: "Watch The Book while watching The Book",
+				},
+				{
 					faceIndex: 5,
 					zoom: true,
 					top: 187 / pageHeight,
