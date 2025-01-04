@@ -718,28 +718,33 @@ export default class Flipbook {
 		if (!this.initCompleted) return;
 		if (this.curTurn) return;
 
+		// determine a top pages
 		const pr = Math.round(this.progress);
 		const topPageIndices = [];
 		if (pr !== 0) topPageIndices.push(pr - 1);
 		if (pr !== this.pages.length) topPageIndices.push(pr);
 
+		// run raycast
 		this.raycaster.setFromCamera(scenePos, this.camera);
 		const intersects = this.raycaster.intersectObjects(
 			topPageIndices.map(i => this.pages[i].mesh),
 		);
 		if (!intersects.length) return;
 
+		// check if ray hits one of the top pages
 		const hoverPageIndex = topPageIndices.find(
 			i => this.pages[i].mesh === intersects[0].object,
 		);
 		if (typeof hoverPageIndex !== "number") return;
 
+		// prevent clicking bending pages
 		const hoverPage = this.pages[hoverPageIndex];
 		const hoverPageBend = Math.abs(
 			hoverPage.turnProgress - hoverPage.turnProgressLag,
 		);
 		if (hoverPageBend > 0.01) return;
 
+		// get face index
 		let hoverFaceIndex;
 		if (intersects[0].face?.materialIndex === 1) {
 			hoverFaceIndex = hoverPageIndex * 2;
@@ -749,6 +754,7 @@ export default class Flipbook {
 			return;
 		}
 
+		// find active area with given coords
 		const faceX = intersects[0].uv?.x || 0;
 		const faceY = 1 - (intersects[0].uv?.y || 0);
 		return this.pageActiveAreas.find(
