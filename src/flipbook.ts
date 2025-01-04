@@ -96,7 +96,9 @@ export default class Flipbook {
 		this.pageEdgeColor = params.pageEdgeColor;
 		this.pageActiveAreas = params.pageActiveAreas || [];
 
-		this.videoOverlay = new VideoOverlay(this.containerEl);
+		this.videoOverlay = new VideoOverlay(this.containerEl, () =>
+			this.restoreCamera(),
+		);
 		this.pageActiveAreas.forEach(area =>
 			this.videoOverlay.addVideo(area?.video),
 		);
@@ -823,5 +825,42 @@ export default class Flipbook {
 		const page = this.pages[Math.floor(area.faceIndex / 2)];
 		const corners = page.getPageAreaCorners(area);
 		this.watchRectangle(corners, area.faceIndex % 2 === 1, 1.125);
+	}
+
+	public async restoreCamera() {
+		const { cameraDistance, cameraAngle } = this.settings;
+
+		const targetPosition = {
+			x: 0,
+			y: Math.sin((cameraAngle * Math.PI) / 2) * -cameraDistance,
+			z: Math.cos((cameraAngle * Math.PI) / 2) * cameraDistance,
+		};
+		const targetRotation = { x: (Math.PI / 2) * cameraAngle, y: 0, z: 0 };
+
+		gsap.to(this.camera.position, {
+			z: targetPosition.z,
+			duration: 1.1,
+			ease: "power2.inOut",
+		});
+
+		sleep(300).then(() => {
+			gsap.to(this.camera.position, {
+				x: targetPosition.x,
+				duration: 0.8,
+				ease: "power2.inOut",
+			});
+
+			gsap.to(this.camera.position, {
+				y: targetPosition.y,
+				duration: 0.8,
+				ease: "power2.inOut",
+			});
+
+			gsap.to(this.camera.rotation, {
+				...targetRotation,
+				duration: 0.8,
+				ease: "power2.inOut",
+			});
+		});
 	}
 }
