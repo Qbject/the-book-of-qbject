@@ -6,11 +6,11 @@ export default class VideoOverlay {
 		closeBtn: HTMLButtonElement;
 		videos: Record<string, HTMLVideoElement>;
 	};
-	private onClose?: () => {};
+	private onCloseRequest?: () => unknown;
 	private activeVideo: HTMLVideoElement | null = null;
 
-	constructor(parent: HTMLElement, onClose?: () => {}) {
-		this.onClose = onClose;
+	constructor(parent: HTMLElement, onCloseRequest?: () => unknown) {
+		this.onCloseRequest = onCloseRequest;
 
 		this.dom = {
 			parent,
@@ -28,8 +28,9 @@ export default class VideoOverlay {
 		this.dom.container.append(this.dom.closeBtn);
 		this.dom.parent.append(this.dom.container);
 
-		this.dom.backdrop.addEventListener("click", () => this.close());
-		this.dom.closeBtn.addEventListener("click", () => this.close());
+		const requestClose = () => this.onCloseRequest?.();
+		this.dom.backdrop.addEventListener("click", requestClose);
+		this.dom.closeBtn.addEventListener("click", requestClose);
 	}
 
 	public open(videoUrl: string) {
@@ -39,22 +40,15 @@ export default class VideoOverlay {
 		this.activeVideo.classList.toggle("active", true);
 		this.activeVideo.currentTime = 0;
 		this.activeVideo.play();
-
-		document.addEventListener("keydown", (event: KeyboardEvent) => {
-			if (event.key !== "Escape" && event.code !== "Escape") return;
-			this.close();
-		});
 	}
 
-	private close() {
+	public close() {
 		if (!this.activeVideo) return;
 
 		this.dom.container.classList.toggle("active", false);
 		this.activeVideo.classList.toggle("active", false);
 		this.activeVideo.pause();
 		this.activeVideo = null;
-
-		this.onClose?.();
 	}
 
 	public addVideo(src?: string) {

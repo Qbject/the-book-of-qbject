@@ -21,12 +21,14 @@ body {
 	pointer-events: none;
 	transition-property: opacity;
 	transition-duration: 300ms;
-	transition-timing-function: ease-out;
+	transition-timing-function: ease-in;
 }
 
 .video-overlay.active {
 	opacity: 1;
 	pointer-events: all;
+	transition-delay: 800ms;
+	transition-timing-function: ease-out;
 }
 
 .video-overlay > video {
@@ -40,9 +42,14 @@ body {
 	transform: translateX(-50%) translateY(-50%) scale(0.965);
 	transition-property: transform, opacity;
 	transition-duration: 300ms;
-	transition-timing-function: ease-out;
+	transition-timing-function: ease-in;
 	opacity: 0;
 	pointer-events: none;
+}
+
+.video-overlay.active > video {
+	transition-delay: 800ms;
+	transition-timing-function: ease-out;
 }
 
 .video-overlay > video.active {

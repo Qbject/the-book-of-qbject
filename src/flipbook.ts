@@ -83,6 +83,12 @@ export default class Flipbook {
 	private initCompleted: boolean = false;
 	private videoOverlay: VideoOverlay;
 
+	// @remark, css values has to be changed individually
+	private focusedActiveArea: PageActiveArea | null = null;
+	private isChangingFocus = false;
+	private focusDuration = 1100;
+	private focusShiftDuration = 800;
+
 	constructor(params: FlipBookParams) {
 		this.containerEl = params.containerEl;
 		this.pageWidth = params.pageWidth;
@@ -96,9 +102,9 @@ export default class Flipbook {
 		this.pageEdgeColor = params.pageEdgeColor;
 		this.pageActiveAreas = params.pageActiveAreas || [];
 
-		this.videoOverlay = new VideoOverlay(this.containerEl, () =>
-			this.restoreCamera(),
-		);
+		this.videoOverlay = new VideoOverlay(this.containerEl, () => {
+			this.unfocusActiveArea();
+		});
 		this.pageActiveAreas.forEach(area =>
 			this.videoOverlay.addVideo(area?.video),
 		);
@@ -320,19 +326,17 @@ export default class Flipbook {
 		this.addTouchListeners();
 		this.addMouseListeners();
 
+		document.addEventListener("keydown", (event: KeyboardEvent) => {
+			if (event.key === "Escape" || event.code === "Escape") {
+				this.unfocusActiveArea();
+			}
+		});
+
 		this.renderer.domElement.addEventListener("click", event => {
 			this.sceneMousePos.x = (event.clientX / window.innerWidth) * 2 - 1;
 			this.sceneMousePos.y =
 				-(event.clientY / window.innerHeight) * 2 + 1;
-			const activeArea = this.getActiveAreaAt(this.sceneMousePos);
-
-			if (activeArea?.video) {
-				const videoLink = activeArea.video;
-				this.watchActiveArea(activeArea);
-				sleep(800).then(() => {
-					this.videoOverlay.open(videoLink);
-				});
-			}
+			this.onBookClick(this.sceneMousePos);
 		});
 
 		this.renderer.domElement.addEventListener("dblclick", () => {
@@ -415,6 +419,12 @@ export default class Flipbook {
 			}
 
 			// process interactive areas
+			if (this.focusedActiveArea || this.isChangingFocus) {
+				this.wrapperLinkEl.removeAttribute("href");
+				this.wrapperLinkEl.style.cursor = "";
+				this.wrapperLinkEl.title = "";
+				return;
+			}
 			this.sceneMousePos.x = (event.clientX / window.innerWidth) * 2 - 1;
 			this.sceneMousePos.y =
 				-(event.clientY / window.innerHeight) * 2 + 1;
@@ -582,7 +592,9 @@ export default class Flipbook {
 		this.group.position.x = newPoint.x;
 		this.group.position.z = newPoint.z;
 
-		this.renderer.render(this.scene, this.camera);
+		if (!this.focusedActiveArea || this.isChangingFocus) {
+			this.renderer.render(this.scene, this.camera);
+		}
 	}
 
 	private onWindowResize() {
@@ -793,19 +805,19 @@ export default class Flipbook {
 
 		gsap.to(this.camera.position, {
 			x: targetPosition.x,
-			duration: 0.8,
+			duration: this.focusShiftDuration / 1000,
 			ease: "power2.inOut",
 		});
 
 		gsap.to(this.camera.position, {
 			y: targetPosition.y,
-			duration: 0.8,
+			duration: this.focusShiftDuration / 1000,
 			ease: "power2.inOut",
 		});
 
 		gsap.to(this.camera.position, {
 			z: targetPosition.z,
-			duration: 1.1,
+			duration: this.focusDuration / 1000,
 			ease: "power2.inOut",
 		});
 
@@ -814,15 +826,9 @@ export default class Flipbook {
 			y: targetQuaternion.y,
 			z: targetQuaternion.z,
 			w: targetQuaternion.w,
-			duration: 0.8,
+			duration: this.focusShiftDuration / 1000,
 			ease: "power2.inOut",
 		});
-	}
-
-	public async watchActiveArea(area: PageActiveArea) {
-		const page = this.pages[Math.floor(area.faceIndex / 2)];
-		const corners = page.getPageAreaCorners(area, area.faceIndex % 2 === 1);
-		this.watchRectangle(corners, 1.125);
 	}
 
 	public async restoreCamera() {
@@ -837,28 +843,65 @@ export default class Flipbook {
 
 		gsap.to(this.camera.position, {
 			z: targetPosition.z,
-			duration: 1.1,
+			duration: this.focusDuration / 1000,
 			ease: "power2.inOut",
 		});
 
-		sleep(300).then(() => {
+		sleep(this.focusDuration - this.focusShiftDuration).then(() => {
 			gsap.to(this.camera.position, {
 				x: targetPosition.x,
-				duration: 0.8,
+				duration: this.focusShiftDuration / 1000,
 				ease: "power2.inOut",
 			});
 
 			gsap.to(this.camera.position, {
 				y: targetPosition.y,
-				duration: 0.8,
+				duration: this.focusShiftDuration / 1000,
 				ease: "power2.inOut",
 			});
 
 			gsap.to(this.camera.rotation, {
 				...targetRotation,
-				duration: 0.8,
+				duration: this.focusShiftDuration / 1000,
 				ease: "power2.inOut",
 			});
 		});
+	}
+
+	private async onBookClick(sceneMousePos: THREE.Vector2) {
+		if (this.isChangingFocus) return;
+
+		if (this.focusedActiveArea) {
+			this.unfocusActiveArea();
+			return;
+		}
+
+		const area = this.getActiveAreaAt(sceneMousePos);
+
+		if (area?.video) {
+			const page = this.pages[Math.floor(area.faceIndex / 2)];
+			const isBackside = area.faceIndex % 2 === 1;
+			const corners = page.getPageAreaCorners(area, isBackside);
+			this.watchRectangle(corners, 1.125);
+
+			this.focusedActiveArea = area;
+			this.videoOverlay.open(area.video);
+
+			this.isChangingFocus = true;
+			await sleep(this.focusDuration);
+			this.isChangingFocus = false;
+		}
+	}
+
+	private async unfocusActiveArea() {
+		if (this.isChangingFocus) return;
+
+		this.focusedActiveArea = null;
+		this.restoreCamera();
+		this.videoOverlay.close();
+
+		this.isChangingFocus = true;
+		await sleep(this.focusDuration);
+		this.isChangingFocus = false;
 	}
 }

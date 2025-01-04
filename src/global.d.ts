@@ -88,4 +88,5 @@ type PageActiveArea = PageArea & {
 	link?: string | (() => string);
 	video?: string;
 	iframe?: string;
+	zoom?: boolean;
 };
