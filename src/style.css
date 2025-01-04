@@ -36,7 +36,7 @@ body {
 	z-index: 1;
 	max-width: 90vw;
 	max-height: 90vh;
-	transform: translateX(-50%) translateY(-50%) scale(0.97);
+	transform: translateX(-50%) translateY(-50%) scale(0.965);
 	transition-property: transform, opacity;
 	transition-duration: 300ms;
 	transition-timing-function: ease-out;
