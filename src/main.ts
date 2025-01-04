@@ -300,11 +300,10 @@ document.addEventListener("DOMContentLoaded", () => {
 				{
 					faceIndex: 5,
 					zoom: true,
-					top: 225 / pageHeight,
+					top: 187 / pageHeight,
 					left: 47 / pageWidth,
 					width: 668 / pageWidth,
 					height: 668 / pageHeight,
-					title: "Click to zoom in",
 				},
 			],
 		});
