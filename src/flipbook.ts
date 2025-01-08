@@ -1,11 +1,12 @@
 import * as THREE from "three";
 import { gsap } from "gsap";
-import { clamp, cosineInterpolate, rotateY, sleep } from "./util";
+import { clamp, rotateY, sleep } from "./util";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "stats.js";
 import Page from "./Page";
 import * as dat from "dat.gui";
 import VideoOverlay from "./video-overlay";
+import { smoothstep } from "three/src/math/MathUtils.js";
 
 export default class Flipbook {
 	private containerEl: HTMLElement;
@@ -64,6 +65,7 @@ export default class Flipbook {
 	private stats;
 	private datGui: dat.GUI;
 
+	// into about the current user gesture - mouse or touch drag
 	private curDrag?: {
 		touchId: number | null; // null if mouse is used
 		prevX: number;
@@ -72,10 +74,17 @@ export default class Flipbook {
 		y: number;
 	};
 
+	// into about the currently turning page
 	private curTurn?: {
 		grabbedPageIndex: number;
 		inertia: number;
 	};
+
+	// into about the current camera shift in vertical mode
+	private curShift?: {
+		inertia: number;
+	};
+
 	private lastGrabbedPageIndex?: number;
 	private spotLightHelper: THREE.SpotLightHelper | null = null;
 	private spotShadowHelper: THREE.CameraHelper | null = null;
@@ -88,7 +97,9 @@ export default class Flipbook {
 	private isChangingFocus = false;
 	private focusDuration = 1100;
 	private focusShiftDuration = 800;
-	private cameraSideShift = 0;
+	// -1: look on the left page | 1: look on the right page
+	private cameraSideShift = 1;
+	private isVerticalMode = false;
 
 	constructor(params: FlipBookParams) {
 		this.containerEl = params.containerEl;
@@ -265,6 +276,7 @@ export default class Flipbook {
 		deskMesh.renderOrder = 100;
 		this.scene.add(deskMesh);
 
+		this.updateVerticalMode();
 		this.applySettings(params.settings || {}, true);
 
 		// Add fps counter
@@ -478,30 +490,45 @@ export default class Flipbook {
 			const progressDelta = this.swipeDeltaToProgress(deltaX);
 
 			// create turn if user starts to drag
-			if (!this.curTurn && progressDelta) {
-				this.curTurn = {
-					grabbedPageIndex: clamp(
-						this.progress + (progressDelta > 0 ? 0 : -1),
-						0,
-						this.pages.length - 1,
-					),
-					inertia: 0,
-				};
-				this.lastGrabbedPageIndex = this.curTurn.grabbedPageIndex;
+			if (!this.curTurn && !this.curShift && progressDelta) {
+				if (
+					// TODO:
+					// this.isVerticalMode &&
+					this.cameraSideShift % 1 ||
+					(this.cameraSideShift === -1 && progressDelta > 0) ||
+					(this.cameraSideShift === 1 && progressDelta < 0)
+				) {
+					this.curShift = { inertia: 0 };
+				} else {
+					this.curTurn = {
+						grabbedPageIndex: clamp(
+							this.progress + (progressDelta > 0 ? 0 : -1),
+							0,
+							this.pages.length - 1,
+						),
+						inertia: 0,
+					};
+					this.lastGrabbedPageIndex = this.curTurn.grabbedPageIndex;
+				}
 			}
 
-			// updating inertia
 			if (this.curTurn) {
+				this.progress += progressDelta;
 				this.curTurn.inertia =
 					(this.curTurn.inertia * 2 + progressDelta / dt) / 3;
 			}
 
-			this.progress += progressDelta;
+			// TODO: properly calc shift delta
+			if (this.curShift) {
+				this.cameraSideShift += progressDelta * 2;
+				this.curShift.inertia =
+					(this.curShift.inertia * 2 + (progressDelta * 2) / dt) / 3;
+			}
 		}
 
 		if (this.curTurn) {
 			if (!this.curDrag) {
-				// inertia and gravity
+				// apply inertia and gravity
 				if (this.progress % 1) {
 					const gravity = ((this.progress % 1) - 0.5) * 10 * dt;
 					this.curTurn.inertia += gravity;
@@ -515,9 +542,29 @@ export default class Flipbook {
 				this.curTurn.grabbedPageIndex + 1,
 			);
 
+			// update cameraSideShift
+			const tp = this.progress - this.curTurn.grabbedPageIndex;
+			this.cameraSideShift = (1 - tp) * 2 - 1;
+
 			if (!this.curDrag && this.progress % 1 === 0) {
 				// turn has ended
 				this.curTurn = undefined;
+			}
+		}
+
+		if (this.curShift) {
+			if (!this.curDrag) {
+				// apply inertia and convergence
+				const convergence = this.cameraSideShift * 10 * dt;
+				this.curShift.inertia += convergence;
+				this.cameraSideShift += this.curShift.inertia * dt;
+			}
+
+			this.cameraSideShift = clamp(this.cameraSideShift, -1, 1);
+
+			if (!this.curDrag && Math.abs(this.cameraSideShift) === 1) {
+				// shift has ended
+				this.curShift = undefined;
 			}
 		}
 
@@ -527,10 +574,6 @@ export default class Flipbook {
 			1,
 		);
 
-		this.cameraSideShift = 1 - cosineInterpolate(0, 1, bookOpenFactor);
-		if (this.progress > this.pages.length - 1) {
-			this.cameraSideShift = -this.cameraSideShift;
-		}
 		this.restoreCamera();
 
 		// TODO:
@@ -605,7 +648,15 @@ export default class Flipbook {
 		this.renderer.render(this.scene, this.camera);
 	}
 
+	private updateVerticalMode() {
+		const bookAspect = (this.pageWidth * 2) / this.pageHeight;
+		const screenAspect = window.innerWidth / window.innerHeight;
+		// TODO: tweak the breakpoint
+		this.isVerticalMode = bookAspect > screenAspect;
+	}
+
 	private onWindowResize() {
+		this.updateVerticalMode();
 		this.camera.aspect = window.innerWidth / window.innerHeight;
 		this.camera.updateProjectionMatrix();
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -849,8 +900,9 @@ export default class Flipbook {
 	public async restoreCamera(animate = false) {
 		const { cameraDistance, cameraAngle } = this.settings;
 
+		const smoothShift = smoothstep(this.cameraSideShift, -1, 1) * 2 - 1;
 		const targetPosition = {
-			x: (this.cameraSideShift * this.pageWidth) / 2,
+			x: (smoothShift * this.pageWidth) / 2,
 			y: Math.sin((cameraAngle * Math.PI) / 2) * -cameraDistance,
 			z: Math.cos((cameraAngle * Math.PI) / 2) * cameraDistance,
 		};
@@ -867,6 +919,7 @@ export default class Flipbook {
 				targetRotation.y,
 				targetRotation.z,
 			);
+			return;
 		}
 
 		gsap.to(this.camera.position, {
