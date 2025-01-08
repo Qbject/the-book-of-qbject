@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { gsap } from "gsap";
-import { clamp, rotateY, sleep } from "./util";
+import { clamp, cosineInterpolate, rotateY, sleep } from "./util";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "stats.js";
 import Page from "./Page";
@@ -88,6 +88,7 @@ export default class Flipbook {
 	private isChangingFocus = false;
 	private focusDuration = 1100;
 	private focusShiftDuration = 800;
+	private cameraSideShift = 0;
 
 	constructor(params: FlipBookParams) {
 		this.containerEl = params.containerEl;
@@ -526,6 +527,12 @@ export default class Flipbook {
 			1,
 		);
 
+		this.cameraSideShift = 1 - cosineInterpolate(0, 1, bookOpenFactor);
+		if (this.progress > this.pages.length - 1) {
+			this.cameraSideShift = -this.cameraSideShift;
+		}
+		this.restoreCamera();
+
 		// TODO:
 		// calculating visual turn progress to timely hide shadows
 		// const topPage = this.pages[Math.max(Math.ceil(this.progress) - 1, 0)];
@@ -615,13 +622,7 @@ export default class Flipbook {
 		}
 
 		if (newSettings.cameraDistance || newSettings.cameraAngle) {
-			const { cameraDistance, cameraAngle } = this.settings;
-			this.camera.position.set(
-				0,
-				Math.sin((cameraAngle * Math.PI) / 2) * -cameraDistance,
-				Math.cos((cameraAngle * Math.PI) / 2) * cameraDistance,
-			);
-			this.camera.rotation.set((Math.PI / 2) * cameraAngle, 0, 0);
+			this.restoreCamera();
 		}
 
 		if (newSettings.cameraNearClip || newSettings.cameraFarClip) {
@@ -845,15 +846,28 @@ export default class Flipbook {
 		});
 	}
 
-	public async restoreCamera() {
+	public async restoreCamera(animate = false) {
 		const { cameraDistance, cameraAngle } = this.settings;
 
 		const targetPosition = {
-			x: 0,
+			x: (this.cameraSideShift * this.pageWidth) / 2,
 			y: Math.sin((cameraAngle * Math.PI) / 2) * -cameraDistance,
 			z: Math.cos((cameraAngle * Math.PI) / 2) * cameraDistance,
 		};
 		const targetRotation = { x: (Math.PI / 2) * cameraAngle, y: 0, z: 0 };
+
+		if (!animate) {
+			this.camera.position.set(
+				targetPosition.x,
+				targetPosition.y,
+				targetPosition.z,
+			);
+			this.camera.rotation.set(
+				targetRotation.x,
+				targetRotation.y,
+				targetRotation.z,
+			);
+		}
 
 		gsap.to(this.camera.position, {
 			z: targetPosition.z,
@@ -928,7 +942,7 @@ export default class Flipbook {
 		if (this.isChangingFocus) return;
 
 		this.focusedActiveArea = null;
-		this.restoreCamera();
+		this.restoreCamera(true);
 		this.videoOverlay.close();
 
 		this.isChangingFocus = true;
