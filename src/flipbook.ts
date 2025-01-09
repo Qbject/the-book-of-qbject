@@ -25,7 +25,7 @@ export default class Flipbook {
 		cameraAngle: 0.35,
 		cameraDistance: 3150,
 		cameraNearClip: 10,
-		cameraFarClip: 4000,
+		cameraFarClip: 10000,
 
 		spotLightX: 910,
 		spotLightY: 300,
@@ -291,7 +291,7 @@ export default class Flipbook {
 		cameraFolder.add(this.settings, "cameraAngle", 0, 1);
 		cameraFolder.add(this.settings, "cameraDistance", 0, 5000);
 		cameraFolder.add(this.settings, "cameraNearClip", 5, 5000);
-		cameraFolder.add(this.settings, "cameraFarClip", 5, 5000);
+		cameraFolder.add(this.settings, "cameraFarClip", 5, 10000);
 
 		const spotLightFolder = this.datGui.addFolder("Spot Light");
 		const spotLightPosFolder = spotLightFolder.addFolder("Position");
@@ -555,7 +555,7 @@ export default class Flipbook {
 		if (this.curShift) {
 			if (!this.curDrag) {
 				// apply inertia and convergence
-				const convergence = this.cameraSideShift * 10 * dt;
+				const convergence = this.cameraSideShift * 20 * dt;
 				this.curShift.inertia += convergence;
 				this.cameraSideShift += this.curShift.inertia * dt;
 			}
@@ -574,7 +574,9 @@ export default class Flipbook {
 			1,
 		);
 
-		this.restoreCamera();
+		if (!this.isChangingFocus && !this.focusedActiveArea) {
+			this.restoreCamera();
+		}
 
 		// TODO:
 		// calculating visual turn progress to timely hide shadows
@@ -898,7 +900,19 @@ export default class Flipbook {
 	}
 
 	public async restoreCamera(animate = false) {
-		const { cameraDistance, cameraAngle } = this.settings;
+		const { cameraAngle } = this.settings;
+
+		const distanceMultiplier = 1.2;
+		const fovYRadians = THREE.MathUtils.degToRad(this.camera.fov);
+		const aspect = this.camera.aspect;
+		const hFOV = 2 * Math.atan(Math.tan(fovYRadians / 2) * aspect);
+		const minDistance =
+			(this.pageWidth / 2 / Math.tan(hFOV / 2)) * distanceMultiplier;
+
+		const cameraDistance = Math.max(
+			minDistance,
+			this.settings.cameraDistance,
+		);
 
 		const smoothShift = smoothstep(this.cameraSideShift, -1, 1) * 2 - 1;
 		const targetPosition = {
