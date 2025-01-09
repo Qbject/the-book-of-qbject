@@ -776,6 +776,7 @@ export default class Flipbook {
 	public getActiveAreaAt(scenePos: THREE.Vector2) {
 		if (!this.initCompleted) return;
 		if (this.curTurn) return;
+		if (this.curShift) return;
 
 		// determine a top pages
 		const pr = Math.round(this.progress);
