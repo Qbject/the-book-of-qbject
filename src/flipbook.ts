@@ -495,8 +495,12 @@ export default class Flipbook {
 					// TODO:
 					// this.isVerticalMode &&
 					this.cameraSideShift % 1 ||
-					(this.cameraSideShift === -1 && progressDelta > 0) ||
-					(this.cameraSideShift === 1 && progressDelta < 0)
+					(this.cameraSideShift === -1 &&
+						progressDelta > 0 &&
+						this.progress < this.pages.length - 1) ||
+					(this.cameraSideShift === 1 &&
+						progressDelta < 0 &&
+						this.progress > 0)
 				) {
 					this.curShift = { inertia: 0 };
 				} else {
