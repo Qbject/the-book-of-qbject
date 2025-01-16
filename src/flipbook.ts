@@ -6,7 +6,6 @@ import Stats from "stats.js";
 import Page from "./Page";
 import * as dat from "dat.gui";
 import VideoOverlay from "./video-overlay";
-import { smoothstep } from "three/src/math/MathUtils.js";
 
 export default class Flipbook {
 	private containerEl: HTMLElement;
