@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { gsap } from "gsap";
-import { clamp, rotateY, sleep } from "./util";
+import { clamp, lerpedSmoothstep, rotateY, sleep } from "./util";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "stats.js";
 import Page from "./Page";
@@ -492,15 +492,14 @@ export default class Flipbook {
 			// create turn if user starts to drag
 			if (!this.curTurn && !this.curShift && progressDelta) {
 				if (
-					// TODO:
-					// this.isVerticalMode &&
-					this.cameraSideShift % 1 ||
-					(this.cameraSideShift === -1 &&
-						progressDelta > 0 &&
-						this.progress < this.pages.length - 1) ||
-					(this.cameraSideShift === 1 &&
-						progressDelta < 0 &&
-						this.progress > 0)
+					this.isVerticalMode &&
+					(this.cameraSideShift % 1 ||
+						(this.cameraSideShift === -1 &&
+							progressDelta > 0 &&
+							this.progress < this.pages.length - 1) ||
+						(this.cameraSideShift === 1 &&
+							progressDelta < 0 &&
+							this.progress > 0))
 				) {
 					this.curShift = { inertia: 0 };
 				} else {
@@ -547,8 +546,22 @@ export default class Flipbook {
 			);
 
 			// update cameraSideShift
-			const tp = this.progress - this.curTurn.grabbedPageIndex;
-			this.cameraSideShift = (1 - tp) * 2 - 1;
+			if (this.isVerticalMode) {
+				const tp = this.progress - this.curTurn.grabbedPageIndex;
+				this.cameraSideShift = (1 - tp) * 2 - 1;
+			} else {
+				// TODO: smoothing works only in one direction
+				const bookOpenFactor = Math.min(
+					this.progress,
+					this.pages.length - this.progress,
+					1,
+				);
+
+				this.cameraSideShift = 1 - bookOpenFactor;
+				if (this.progress + 1 > this.pages.length) {
+					this.cameraSideShift = -this.cameraSideShift;
+				}
+			}
 
 			if (!this.curDrag && this.progress % 1 === 0) {
 				// turn has ended
@@ -572,15 +585,15 @@ export default class Flipbook {
 			}
 		}
 
+		if (!this.isChangingFocus && !this.focusedActiveArea) {
+			this.restoreCamera();
+		}
+
 		const bookOpenFactor = Math.min(
 			this.progress,
 			this.pages.length - this.progress,
 			1,
 		);
-
-		if (!this.isChangingFocus && !this.focusedActiveArea) {
-			this.restoreCamera();
-		}
 
 		// TODO:
 		// calculating visual turn progress to timely hide shadows
@@ -919,7 +932,14 @@ export default class Flipbook {
 			this.settings.cameraDistance,
 		);
 
-		const smoothShift = smoothstep(this.cameraSideShift, -1, 1) * 2 - 1;
+		let smoothShift;
+		if (this.isVerticalMode) {
+			smoothShift = lerpedSmoothstep(this.cameraSideShift, -1, 1);
+		} else {
+			const min = this.cameraSideShift < 0 ? -1 : 0;
+			const max = this.cameraSideShift < 0 ? 0 : 1;
+			smoothShift = lerpedSmoothstep(this.cameraSideShift, min, max);
+		}
 		const targetPosition = {
 			x: (smoothShift * this.pageWidth) / 2,
 			y: Math.sin((cameraAngle * Math.PI) / 2) * -cameraDistance,
