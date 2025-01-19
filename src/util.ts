@@ -72,3 +72,13 @@ export function lerpedSmoothstep(value: number, min: number, max: number) {
 	const t = smoothstep(value, min, max);
 	return lerp(min, max, t);
 }
+
+export function removeArrayItem<T>(array: T[], item: T): boolean {
+	const index = array.indexOf(item);
+
+	if (index > -1) {
+		array.splice(index, 1);
+	}
+
+	return index !== -1;
+}

@@ -89,3 +89,14 @@ type PageActiveArea = PageArea & {
 	video?: string;
 	zoom?: boolean;
 };
+
+type Swipe = {
+	touchId: number | null; // null if mouse is used
+	startX: number;
+	startY: number;
+	prevX: number;
+	prevY: number;
+	x: number;
+	y: number;
+	direction: "left" | "right" | null;
+};

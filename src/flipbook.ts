@@ -1,11 +1,13 @@
 import * as THREE from "three";
 import { gsap } from "gsap";
-import { clamp, lerpedSmoothstep, rotateY, sleep } from "./util";
+import { rotateY, sleep } from "./util";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "stats.js";
 import Page from "./Page";
 import * as dat from "dat.gui";
 import VideoOverlay from "./video-overlay";
+import SlidingNumber, { ValueChangeEvent } from "./SlidingNumber";
+import SwipeHandler from "./SwipeHandler";
 
 export default class Flipbook {
 	private containerEl: HTMLElement;
@@ -56,7 +58,7 @@ export default class Flipbook {
 	private raycaster: THREE.Raycaster;
 	private sceneMousePos: THREE.Vector2;
 
-	private progress = 0;
+	private progress = new SlidingNumber(0, 0.1, 4);
 	private spineWidth: number;
 	private spineZ: number;
 
@@ -64,41 +66,21 @@ export default class Flipbook {
 	private stats;
 	private datGui: dat.GUI;
 
-	// into about the current user gesture - mouse or touch drag
-	private curDrag?: {
-		touchId: number | null; // null if mouse is used
-		prevX: number;
-		prevY: number;
-		x: number;
-		y: number;
-	};
-
-	// into about the currently turning page
-	private curTurn?: {
-		grabbedPageIndex: number;
-		inertia: number;
-	};
-
-	// into about the current camera shift in vertical mode
-	private curShift?: {
-		inertia: number;
-	};
-
-	private lastGrabbedPageIndex?: number;
 	private spotLightHelper: THREE.SpotLightHelper | null = null;
 	private spotShadowHelper: THREE.CameraHelper | null = null;
 	private textureLoader: THREE.TextureLoader;
 	private initCompleted: boolean = false;
 	private videoOverlay: VideoOverlay;
 
-	// @remark, css values has to be changed individually
 	private focusedActiveArea: PageActiveArea | null = null;
 	private isChangingFocus = false;
+	// @remark, css values has to be changed individually
 	private focusDuration = 1100;
 	private focusShiftDuration = 800;
-	// -1: look on the left page | 1: look on the right page
-	private cameraSideShift = 1;
+	private CAMERA_SIDE_GRAVITY = 4;
+	private cameraSideShift = new SlidingNumber(1, 0.2);
 	private isVerticalMode = false;
+	private swipeHandler: SwipeHandler;
 
 	constructor(params: FlipBookParams) {
 		this.containerEl = params.containerEl;
@@ -335,8 +317,41 @@ export default class Flipbook {
 			this.onWindowResize.bind(this),
 			false,
 		);
-		this.addTouchListeners();
-		this.addMouseListeners();
+
+		// process interactive areas
+		this.renderer.domElement.addEventListener("mousemove", event => {
+			if (this.focusedActiveArea || this.isChangingFocus) {
+				return;
+			}
+			this.sceneMousePos.x = (event.clientX / window.innerWidth) * 2 - 1;
+			this.sceneMousePos.y =
+				-(event.clientY / window.innerHeight) * 2 + 1;
+			const activeArea = this.getActiveAreaAt(this.sceneMousePos);
+			this.wrapperLinkEl.style.cursor = activeArea ? "pointer" : "";
+			this.wrapperLinkEl.title = activeArea?.title || "";
+
+			if (activeArea?.link) {
+				let href = activeArea.link;
+				if (typeof href !== "string") href = href();
+				this.wrapperLinkEl.setAttribute("href", href);
+			} else {
+				this.wrapperLinkEl.removeAttribute("href");
+			}
+		});
+
+		this.swipeHandler = new SwipeHandler(this.renderer.domElement);
+		this.swipeHandler.addCallback("swipeStart", () => {
+			// continuing dropped turn or shift
+			this.isTurning() && this.progress.lock();
+			this.isShifting() && this.cameraSideShift.lock();
+		});
+		this.swipeHandler.addCallback("swipeEnd", () => {
+			this.progress.release();
+			this.cameraSideShift.release();
+		});
+		this.swipeHandler.addCallback("swipeMove", (swipe: Swipe) =>
+			this.onSwipeMove(swipe),
+		);
 
 		document.addEventListener("keydown", (event: KeyboardEvent) => {
 			if (event.key === "Escape" || event.code === "Escape") {
@@ -374,87 +389,62 @@ export default class Flipbook {
 			}
 		});
 
+		this.cameraSideShift.setMin(-1); // look at the left page
+		this.cameraSideShift.setMax(1); // look at the right page
+
+		this.progress.setMin(-Infinity);
+		this.progress.setMax(Infinity);
+
+		this.progress.addCallback("settled", () => {
+			this.progress.setMin(-Infinity);
+			this.progress.setMax(Infinity);
+		});
+
+		// update cameraSideShift
+		this.progress.addCallback(
+			"valueChange",
+			({ newValue: progress }: ValueChangeEvent) => {
+				if (this.isVerticalMode) {
+					if (this.isTurning()) {
+						const tp = progress - this.getTurningPage()!;
+						this.cameraSideShift.setValue((1 - tp) * 2 - 1);
+					} else {
+						this.cameraSideShift.setValue(
+							Math.round(this.cameraSideShift.getValue()),
+						);
+					}
+				} else {
+					const bookOpenFactor = Math.min(
+						progress,
+						this.pages.length - progress,
+						1,
+					);
+
+					this.cameraSideShift.setValue(1 - bookOpenFactor);
+					if (progress + 1 > this.pages.length) {
+						this.cameraSideShift.setValue(
+							-this.cameraSideShift.getValue(),
+						);
+					}
+				}
+			},
+		);
+
 		// main loop
 		this.runAnimation();
 	}
 
-	private addTouchListeners() {
-		this.renderer.domElement.addEventListener("touchstart", event => {
-			if (!this.curDrag) {
-				this.curDrag = {
-					prevX: event.touches[0].clientX,
-					prevY: event.touches[0].clientY,
-					x: event.touches[0].clientX,
-					y: event.touches[0].clientY,
-					touchId: event.touches[0].identifier,
-				};
-			}
-		});
-
-		this.renderer.domElement.addEventListener("touchmove", event => {
-			const drag = Array.from(event.touches).find(
-				touch => touch.identifier === this.curDrag?.touchId,
-			);
-			if (!drag || !this.curDrag) return;
-
-			this.curDrag.x = drag.clientX;
-			this.curDrag.y = drag.clientY;
-		});
-
-		this.renderer.domElement.addEventListener("touchend", event => {
-			if (
-				event.changedTouches.length === 1 &&
-				event.touches.length === 0
-			) {
-				this.curDrag = undefined;
-			}
-		});
+	private getTurningPage(): number | null {
+		if (!this.isTurning()) return null;
+		return this.progress.minValue;
 	}
 
-	private addMouseListeners() {
-		this.renderer.domElement.addEventListener("mousedown", event => {
-			if (!this.curDrag) {
-				this.curDrag = {
-					prevX: event.clientX,
-					prevY: event.clientY,
-					x: event.clientX,
-					y: event.clientY,
-					touchId: null,
-				};
-			}
-		});
+	private isTurning() {
+		return !this.progress.isSettled();
+	}
 
-		this.renderer.domElement.addEventListener("mousemove", event => {
-			if (this.curDrag && !this.curDrag.touchId) {
-				this.curDrag.x = event.clientX;
-				this.curDrag.y = event.clientY;
-			}
-
-			// process interactive areas
-			if (this.focusedActiveArea || this.isChangingFocus) {
-				return;
-			}
-			this.sceneMousePos.x = (event.clientX / window.innerWidth) * 2 - 1;
-			this.sceneMousePos.y =
-				-(event.clientY / window.innerHeight) * 2 + 1;
-			const activeArea = this.getActiveAreaAt(this.sceneMousePos);
-			this.wrapperLinkEl.style.cursor = activeArea ? "pointer" : "";
-			this.wrapperLinkEl.title = activeArea?.title || "";
-
-			if (activeArea?.link) {
-				let href = activeArea.link;
-				if (typeof href !== "string") href = href();
-				this.wrapperLinkEl.setAttribute("href", href);
-			} else {
-				this.wrapperLinkEl.removeAttribute("href");
-			}
-		});
-
-		this.renderer.domElement.addEventListener("mouseup", () => {
-			if (this.curDrag && !this.curDrag.touchId) {
-				this.curDrag = undefined;
-			}
-		});
+	private isShifting() {
+		return !this.cameraSideShift.isSettled() && !this.isTurning();
 	}
 
 	private swipeDeltaToProgress(delta: number) {
@@ -478,121 +468,66 @@ export default class Flipbook {
 		animate(performance.now());
 	}
 
+	private onSwipeMove(swipe: Swipe) {
+		const deltaX = swipe.x - swipe.prevX;
+		if (!deltaX) return;
+		const progressDelta = this.swipeDeltaToProgress(deltaX);
+
+		if (!this.cameraSideShift.locked && !this.progress.locked) {
+			// start either a shift or a turn
+			if (
+				this.isVerticalMode &&
+				!this.isTurning() &&
+				(this.isShifting() ||
+					(this.cameraSideShift.getValue() === -1 &&
+						progressDelta > 0 &&
+						this.progress.getValue() < this.pages.length - 1) ||
+					(this.cameraSideShift.getValue() === 1 &&
+						progressDelta < 0 &&
+						this.progress.getValue() > 0))
+			) {
+				// starting a shift
+				this.cameraSideShift.lock();
+			} else {
+				// starting a turn
+				this.progress.lock();
+				this.cameraSideShift.lock();
+
+				if (progressDelta > 0) {
+					this.progress.setMin(this.progress.getValue());
+					this.progress.setMax(this.progress.getValue() + 1);
+				} else {
+					this.progress.setMin(this.progress.getValue() - 1);
+					this.progress.setMax(this.progress.getValue());
+				}
+
+				// handling book beginning and ending
+				if (this.progress.minValue < 0) {
+					this.progress.setMin(0);
+					this.progress.setMax(1);
+				} else if (this.progress.maxValue > this.pages.length) {
+					this.progress.setMin(this.pages.length - 1);
+					this.progress.setMax(this.pages.length);
+				}
+			}
+		}
+
+		if (this.isTurning()) {
+			this.progress.nudge(progressDelta);
+		}
+
+		if (this.isShifting()) {
+			this.cameraSideShift.nudge(progressDelta * 2);
+		}
+	}
+
 	private update(dt: number) {
 		if (!dt) return;
 		this.initCompleted = true;
 
-		if (this.curDrag) {
-			const deltaX = this.curDrag.x - this.curDrag.prevX;
-			this.curDrag.prevX = this.curDrag.x;
-			this.curDrag.prevY = this.curDrag.y;
-			const progressDelta = this.swipeDeltaToProgress(deltaX);
-
-			// create turn if user starts to drag
-			if (!this.curTurn && !this.curShift && progressDelta) {
-				if (
-					this.isVerticalMode &&
-					(this.cameraSideShift % 1 ||
-						(this.cameraSideShift === -1 &&
-							progressDelta > 0 &&
-							this.progress < this.pages.length - 1) ||
-						(this.cameraSideShift === 1 &&
-							progressDelta < 0 &&
-							this.progress > 0))
-				) {
-					this.curShift = { inertia: 0 };
-				} else {
-					this.curTurn = {
-						grabbedPageIndex: clamp(
-							this.progress + (progressDelta > 0 ? 0 : -1),
-							0,
-							this.pages.length - 1,
-						),
-						inertia: 0,
-					};
-					this.lastGrabbedPageIndex = this.curTurn.grabbedPageIndex;
-				}
-			}
-
-			if (this.curTurn) {
-				this.progress += progressDelta;
-				this.curTurn.inertia =
-					(this.curTurn.inertia * 2 + progressDelta / dt) / 3;
-			}
-
-			// TODO: properly calc shift delta
-			if (this.curShift) {
-				this.cameraSideShift += progressDelta * 2;
-				this.curShift.inertia =
-					(this.curShift.inertia * 2 + (progressDelta * 2) / dt) / 3;
-			}
-		}
-
-		if (this.curTurn) {
-			if (!this.curDrag) {
-				// apply inertia and gravity
-				if (this.progress % 1) {
-					const gravity = ((this.progress % 1) - 0.5) * 10 * dt;
-					this.curTurn.inertia += gravity;
-				}
-				this.progress += this.curTurn.inertia * dt;
-			}
-
-			this.progress = clamp(
-				this.progress,
-				this.curTurn.grabbedPageIndex,
-				this.curTurn.grabbedPageIndex + 1,
-			);
-
-			// update cameraSideShift
-			if (this.isVerticalMode) {
-				const tp = this.progress - this.curTurn.grabbedPageIndex;
-				this.cameraSideShift = (1 - tp) * 2 - 1;
-			} else {
-				// TODO: smoothing works only in one direction
-				const bookOpenFactor = Math.min(
-					this.progress,
-					this.pages.length - this.progress,
-					1,
-				);
-
-				this.cameraSideShift = 1 - bookOpenFactor;
-				if (this.progress + 1 > this.pages.length) {
-					this.cameraSideShift = -this.cameraSideShift;
-				}
-			}
-
-			if (!this.curDrag && this.progress % 1 === 0) {
-				// turn has ended
-				this.curTurn = undefined;
-			}
-		}
-
-		if (this.curShift) {
-			if (!this.curDrag) {
-				// apply inertia and convergence
-				const convergence = this.cameraSideShift * 20 * dt;
-				this.curShift.inertia += convergence;
-				this.cameraSideShift += this.curShift.inertia * dt;
-			}
-
-			this.cameraSideShift = clamp(this.cameraSideShift, -1, 1);
-
-			if (!this.curDrag && Math.abs(this.cameraSideShift) === 1) {
-				// shift has ended
-				this.curShift = undefined;
-			}
-		}
-
 		if (!this.isChangingFocus && !this.focusedActiveArea) {
 			this.restoreCamera();
 		}
-
-		const bookOpenFactor = Math.min(
-			this.progress,
-			this.pages.length - this.progress,
-			1,
-		);
 
 		// TODO:
 		// calculating visual turn progress to timely hide shadows
@@ -600,6 +535,12 @@ export default class Flipbook {
 		// const visualProgress =
 		// 	this.progress +
 		// 	(topPage.turnProgress - topPage.turnProgressLag) * 0.5;
+
+		const bookOpenFactor = Math.min(
+			this.progress.getValue(),
+			this.pages.length - this.progress.getValue(),
+			1,
+		);
 
 		this.pages.forEach((page, index) => {
 			// toggle shadow
@@ -609,37 +550,37 @@ export default class Flipbook {
 			}
 
 			let tp;
-			if (index >= this.progress) {
+			if (index >= this.progress.getValue()) {
 				tp = bookOpenFactor;
-			} else if (index < Math.floor(this.progress)) {
+			} else if (index < Math.floor(this.progress.getValue())) {
 				tp = -bookOpenFactor;
 			} else {
 				if (page.isCover) {
 					tp = index ? bookOpenFactor : -bookOpenFactor;
 				} else {
-					tp = (this.progress % 1) * -2 + 1;
+					tp = (this.progress.getValue() % 1) * -2 + 1;
 				}
 			}
 
-			// toggle bend
-			page.bendingEnabled = !(
-				this.lastGrabbedPageIndex !== undefined &&
-				this.pages[this.lastGrabbedPageIndex].isCover
-			);
-
 			page.setTurnProgress(tp);
 
-			page.mesh.renderOrder = Math.abs(this.progress - 0.5 - index);
+			page.bendingEnabled =
+				this.progress.getValue() >= 1 &&
+				this.progress.getValue() <= this.pages.length - 1;
+
+			page.mesh.renderOrder = Math.abs(
+				this.progress.getValue() - 0.5 - index,
+			);
 
 			page.update(dt);
 		});
 
 		// handle book rotation
 		let bookAngle = 0;
-		if (this.progress < 1) {
-			bookAngle = 1 - this.progress;
-		} else if (this.progress > this.pages.length - 1) {
-			bookAngle = this.pages.length - 1 - this.progress;
+		if (this.progress.getValue() < 1) {
+			bookAngle = 1 - this.progress.getValue();
+		} else if (this.progress.getValue() > this.pages.length - 1) {
+			bookAngle = this.pages.length - 1 - this.progress.getValue();
 		}
 		bookAngle *= Math.PI / 2;
 		this.group.rotation.y = bookAngle;
@@ -671,6 +612,11 @@ export default class Flipbook {
 		const screenAspect = window.innerWidth / window.innerHeight;
 		// TODO: tweak the breakpoint
 		this.isVerticalMode = bookAspect > screenAspect;
+		if (this.isVerticalMode) {
+			this.cameraSideShift.gravity = this.CAMERA_SIDE_GRAVITY;
+		} else {
+			this.cameraSideShift.gravity = 0;
+		}
 	}
 
 	private onWindowResize() {
@@ -791,11 +737,11 @@ export default class Flipbook {
 
 	public getActiveAreaAt(scenePos: THREE.Vector2) {
 		if (!this.initCompleted) return;
-		if (this.curTurn) return;
-		if (this.curShift) return;
+		if (this.isTurning()) return;
+		if (this.isShifting()) return;
 
 		// determine a top pages
-		const pr = Math.round(this.progress);
+		const pr = Math.round(this.progress.getValue());
 		const topPageIndices = [];
 		if (pr !== 0) topPageIndices.push(pr - 1);
 		if (pr !== this.pages.length) topPageIndices.push(pr);
@@ -931,16 +877,8 @@ export default class Flipbook {
 			this.settings.cameraDistance,
 		);
 
-		let smoothShift;
-		if (this.isVerticalMode) {
-			smoothShift = lerpedSmoothstep(this.cameraSideShift, -1, 1);
-		} else {
-			const min = this.cameraSideShift < 0 ? -1 : 0;
-			const max = this.cameraSideShift < 0 ? 0 : 1;
-			smoothShift = lerpedSmoothstep(this.cameraSideShift, min, max);
-		}
 		const targetPosition = {
-			x: (smoothShift * this.pageWidth) / 2,
+			x: (this.cameraSideShift.getValue() * this.pageWidth) / 2,
 			y: Math.sin((cameraAngle * Math.PI) / 2) * -cameraDistance,
 			z: Math.cos((cameraAngle * Math.PI) / 2) * cameraDistance,
 		};
