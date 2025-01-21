@@ -48,15 +48,13 @@ document.addEventListener("DOMContentLoaded", () => {
 					"/img/pages/time-recorder.jpg",
 					"/img/pages/fifteen-js.jpg",
 					"/img/pages/the-book.jpg",
-					"/img/pages/blank.jpg",
-					"/img/pages/blank-end.jpg",
 					"/img/pages/cover-back.jpg",
 				],
-				spineInner: "https://picsum.photos/id/140/445/720", // TODO:
-				spineOuter: "https://picsum.photos/id/140/445/720", // TODO:
+				spineInner: "/img/pages/spine.jpg",
+				spineOuter: "/img/pages/spine.jpg",
 				coverEdgeTB: "/img/pages/cover-edge-tb.jpg",
 				coverEdgeLR: "/img/pages/cover-edge-lr.jpg",
-				spineEdgeTB: "/img/pages/cover-edge-tb.jpg", // TODO:
+				spineEdgeTB: "/img/pages/spine-edge-tb.jpg",
 				spineEdgeLR: "/img/pages/cover-edge-tb.jpg",
 				desk: "/img/desk/desk.jpg",
 			},
