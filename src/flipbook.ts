@@ -574,7 +574,9 @@ export default class Flipbook {
 				this.progress.getValue() - 0.5 - index,
 			);
 
-			page.update(dt);
+			if (page.needsUpdate()) {
+				page.update(dt);
+			}
 		});
 
 		// handle book rotation

@@ -31,6 +31,7 @@ export default class Page {
 	public bendingEnabled: boolean = true;
 	private textureLoader: THREE.TextureLoader;
 	private isFrontCover: boolean;
+	private hasTurnProgressUpdated = false;
 
 	private curveVisualizer: BezierCurveVisualizer;
 
@@ -196,14 +197,6 @@ export default class Page {
 	}
 
 	public update(dt: number) {
-		// TODO:
-		// if (
-		// 	Math.abs(this.turnProgress) === 1 &&
-		// 	this.turnProgress === this.turnProgressLag
-		// ) {
-		// 	return;
-		// }
-
 		// straighten
 		let straightenTarget = this.turnProgress;
 		if (this.bendingEnabled) {
@@ -251,14 +244,30 @@ export default class Page {
 		// TODO: calculate normals manually?
 		this.mesh.geometry.computeVertexNormals();
 		this.mesh.geometry.computeBoundingSphere();
+
+		this.hasTurnProgressUpdated = true;
+	}
+
+	public needsUpdate() {
+		if (!this.hasTurnProgressUpdated) return true;
+		return (
+			(this.turnProgress !== 1 &&
+				this.turnProgress !== -1 &&
+				this.turnProgress !== 0) ||
+			this.turnProgress !== this.turnProgressLag
+		);
 	}
 
 	public setTurnProgress(turnProgress: number) {
+		if (turnProgress === this.turnProgress) return;
+
 		if (!this.bendingEnabled) {
 			const delta = turnProgress - this.turnProgress;
 			this.turnProgressLag += delta;
 		}
+
 		this.turnProgress = turnProgress;
+		this.hasTurnProgressUpdated = false;
 	}
 
 	public setElevation(elevationLeft: number, elevationRight: number) {
