@@ -108,7 +108,8 @@ export default class Flipbook {
 			window.innerWidth / window.innerHeight,
 		);
 
-		this.renderer = new THREE.WebGLRenderer({ antialias: true });
+		this.renderer = new THREE.WebGLRenderer();
+		// this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 		// this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
 		// this.renderer.toneMappingExposure = 1.2;
@@ -343,7 +344,7 @@ export default class Flipbook {
 		this.swipeHandler.addCallback("swipeStart", () => {
 			// continuing dropped turn or shift
 			this.isTurning() && this.progress.lock();
-			this.isShifting() && this.cameraSideShift.lock();
+			!this.cameraSideShift.isSettled() && this.cameraSideShift.lock();
 		});
 		this.swipeHandler.addCallback("swipeEnd", () => {
 			this.progress.release();
@@ -531,9 +532,10 @@ export default class Flipbook {
 
 		// TODO:
 		// calculating visual turn progress to timely hide shadows
-		// const topPage = this.pages[Math.max(Math.ceil(this.progress) - 1, 0)];
+		// const topPage =
+		// 	this.pages[Math.max(Math.ceil(this.progress.getValue()) - 1, 0)];
 		// const visualProgress =
-		// 	this.progress +
+		// 	this.progress.getValue() +
 		// 	(topPage.turnProgress - topPage.turnProgressLag) * 0.5;
 
 		const bookOpenFactor = Math.min(
@@ -543,11 +545,11 @@ export default class Flipbook {
 		);
 
 		this.pages.forEach((page, index) => {
+			// TODO:
 			// toggle shadow
-			if (index && index < this.pages.length - 1) {
-				// TODO:
-				// page.mesh.castShadow = visualProgress < index + 1.9;
-			}
+			// if (index && index < this.pages.length - 1) {
+			// 	page.mesh.castShadow = visualProgress < index + 1.9;
+			// }
 
 			let tp;
 			if (index >= this.progress.getValue()) {

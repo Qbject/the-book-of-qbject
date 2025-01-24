@@ -196,6 +196,14 @@ export default class Page {
 	}
 
 	public update(dt: number) {
+		// TODO:
+		// if (
+		// 	Math.abs(this.turnProgress) === 1 &&
+		// 	this.turnProgress === this.turnProgressLag
+		// ) {
+		// 	return;
+		// }
+
 		// straighten
 		let straightenTarget = this.turnProgress;
 		if (this.bendingEnabled) {
