@@ -26,8 +26,7 @@ type FlipBookParams = {
 type FlipbookSettings = {
 	cameraAngle: number;
 	cameraDistance: number;
-	cameraNearClip: number;
-	cameraFarClip: number;
+	cameraFov: number;
 
 	spotLightX: number;
 	spotLightY: number;

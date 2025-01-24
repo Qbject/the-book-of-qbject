@@ -23,10 +23,9 @@ export default class Flipbook {
 	private pageActiveAreas: PageActiveArea[] = [];
 	private pageEdgeColor: number;
 	public readonly settings: FlipbookSettings = {
-		cameraAngle: 0.35,
-		cameraDistance: 3150,
-		cameraNearClip: 10,
-		cameraFarClip: 10000,
+		cameraAngle: (Math.PI / 2) * 0.35,
+		cameraDistance: 1,
+		cameraFov: 20,
 
 		spotLightX: 910,
 		spotLightY: 300,
@@ -106,6 +105,8 @@ export default class Flipbook {
 		this.camera = new THREE.PerspectiveCamera(
 			20,
 			window.innerWidth / window.innerHeight,
+			1,
+			10000,
 		);
 
 		this.renderer = new THREE.WebGLRenderer();
@@ -270,10 +271,14 @@ export default class Flipbook {
 
 		const cameraFolder = this.datGui.addFolder("Camera");
 		cameraFolder.open();
-		cameraFolder.add(this.settings, "cameraAngle", 0, 1);
-		cameraFolder.add(this.settings, "cameraDistance", 0, 5000);
-		cameraFolder.add(this.settings, "cameraNearClip", 5, 5000);
-		cameraFolder.add(this.settings, "cameraFarClip", 5, 10000);
+		cameraFolder.add(
+			this.settings,
+			"cameraAngle",
+			Math.PI / -2,
+			Math.PI / 2,
+		);
+		cameraFolder.add(this.settings, "cameraDistance", 0, 2);
+		cameraFolder.add(this.settings, "cameraFov", 1, 90);
 
 		const spotLightFolder = this.datGui.addFolder("Spot Light");
 		const spotLightPosFolder = spotLightFolder.addFolder("Position");
@@ -640,14 +645,18 @@ export default class Flipbook {
 			newSettings = this.settings; // ensure all updates are triggered
 		}
 
-		if (newSettings.cameraDistance || newSettings.cameraAngle) {
+		if (
+			newSettings.cameraDistance ||
+			newSettings.cameraAngle ||
+			newSettings.cameraFov
+		) {
 			this.restoreCamera();
 		}
 
-		if (newSettings.cameraNearClip || newSettings.cameraFarClip) {
-			this.camera.near = this.settings.cameraNearClip;
-			this.camera.far = this.settings.cameraFarClip;
+		if (newSettings.cameraFov) {
+			this.camera.fov = this.settings.cameraFov;
 			this.camera.updateProjectionMatrix();
+			this.restoreCamera();
 		}
 
 		if (
@@ -796,6 +805,8 @@ export default class Flipbook {
 	public watchRectangle(
 		corners: THREE.Vector3[],
 		distanceMultiplier: number = 1,
+		animate = false,
+		reverseAnimation = false,
 	) {
 		const [TL, TR, BL, BR] = corners;
 
@@ -838,95 +849,140 @@ export default class Flipbook {
 			targetDirection,
 		);
 
-		gsap.to(this.camera.position, {
-			x: targetPosition.x,
-			duration: this.focusShiftDuration / 1000,
-			ease: "power2.inOut",
-		});
+		let [zDuration, restDuration, restDelay] = [0, 0, 0];
+		if (animate) {
+			zDuration = this.focusDuration;
+			restDuration = this.focusShiftDuration;
 
-		gsap.to(this.camera.position, {
-			y: targetPosition.y,
-			duration: this.focusShiftDuration / 1000,
-			ease: "power2.inOut",
-		});
-
-		gsap.to(this.camera.position, {
-			z: targetPosition.z,
-			duration: this.focusDuration / 1000,
-			ease: "power2.inOut",
-		});
-
-		gsap.to(this.camera.quaternion, {
-			x: targetQuaternion.x,
-			y: targetQuaternion.y,
-			z: targetQuaternion.z,
-			w: targetQuaternion.w,
-			duration: this.focusShiftDuration / 1000,
-			ease: "power2.inOut",
-		});
-	}
-
-	public async restoreCamera(animate = false) {
-		const { cameraAngle } = this.settings;
-
-		const distanceMultiplier = 1.2;
-		const fovYRadians = THREE.MathUtils.degToRad(this.camera.fov);
-		const aspect = this.camera.aspect;
-		const hFOV = 2 * Math.atan(Math.tan(fovYRadians / 2) * aspect);
-		const minDistance =
-			(this.pageWidth / 2 / Math.tan(hFOV / 2)) * distanceMultiplier;
-
-		const cameraDistance = Math.max(
-			minDistance,
-			this.settings.cameraDistance,
-		);
-
-		const targetPosition = {
-			x: (this.cameraSideShift.getValue() * this.pageWidth) / 2,
-			y: Math.sin((cameraAngle * Math.PI) / 2) * -cameraDistance,
-			z: Math.cos((cameraAngle * Math.PI) / 2) * cameraDistance,
-		};
-		const targetRotation = { x: (Math.PI / 2) * cameraAngle, y: 0, z: 0 };
-
-		if (!animate) {
-			this.camera.position.set(
-				targetPosition.x,
-				targetPosition.y,
-				targetPosition.z,
-			);
-			this.camera.rotation.set(
-				targetRotation.x,
-				targetRotation.y,
-				targetRotation.z,
-			);
-			return;
+			if (reverseAnimation) {
+				restDelay = this.focusDuration - this.focusShiftDuration;
+			}
 		}
 
 		gsap.to(this.camera.position, {
 			z: targetPosition.z,
-			duration: this.focusDuration / 1000,
+			duration: zDuration / 1000,
 			ease: "power2.inOut",
 		});
 
-		sleep(this.focusDuration - this.focusShiftDuration).then(() => {
+		const animateRest = () => {
 			gsap.to(this.camera.position, {
 				x: targetPosition.x,
-				duration: this.focusShiftDuration / 1000,
+				duration: restDuration / 1000,
 				ease: "power2.inOut",
 			});
 
 			gsap.to(this.camera.position, {
 				y: targetPosition.y,
-				duration: this.focusShiftDuration / 1000,
+				duration: restDuration / 1000,
 				ease: "power2.inOut",
 			});
 
-			gsap.to(this.camera.rotation, {
-				...targetRotation,
-				duration: this.focusShiftDuration / 1000,
+			gsap.to(this.camera.quaternion, {
+				x: targetQuaternion.x,
+				y: targetQuaternion.y,
+				z: targetQuaternion.z,
+				w: targetQuaternion.w,
+				duration: restDuration / 1000,
 				ease: "power2.inOut",
 			});
-		});
+		};
+
+		if (restDelay) sleep(restDelay).then(animateRest);
+		else animateRest();
+	}
+
+	public async restoreCamera(animate = false) {
+		const pw = this.pageWidth;
+		const ph = this.pageHeight;
+		const cornerTL = new THREE.Vector3(-pw, ph / 2, 0);
+		const cornerTR = new THREE.Vector3(pw, ph / 2, 0);
+		const cornerBL = new THREE.Vector3(-pw, ph / -2, 0);
+		const cornerBR = new THREE.Vector3(pw, ph / -2, 0);
+
+		const corners = [cornerTL, cornerTR, cornerBL, cornerBR];
+
+		// applying transformations to the corners
+		if (this.isVerticalMode) {
+			corners.forEach(point => {
+				point.x *= 0.6;
+			});
+		}
+
+		if (this.cameraSideShift) {
+			corners.forEach(point => {
+				point.x +=
+					(this.pageWidth * this.cameraSideShift.getValue()) / 2;
+			});
+		}
+
+		const { cameraAngle } = this.settings;
+		let rotationMatrix = new THREE.Matrix4().makeRotationX(cameraAngle);
+		corners.forEach(point => point.applyMatrix4(rotationMatrix));
+
+		const { cameraDistance } = this.settings;
+		this.watchRectangle(corners, cameraDistance, animate, true);
+
+		// const { cameraAngle } = this.settings;
+
+		// const distanceMultiplier = 1.2;
+		// const fovYRadians = THREE.MathUtils.degToRad(this.camera.fov);
+		// const aspect = this.camera.aspect;
+		// const hFOV = 2 * Math.atan(Math.tan(fovYRadians / 2) * aspect);
+		// const minDistance =
+		// 	(this.pageWidth / 2 / Math.tan(hFOV / 2)) * distanceMultiplier;
+
+		// const cameraDistance = Math.max(
+		// 	minDistance,
+		// 	this.settings.cameraDistance,
+		// );
+
+		// const targetPosition = {
+		// 	x: (this.cameraSideShift.getValue() * this.pageWidth) / 2,
+		// 	y: Math.sin((cameraAngle * Math.PI) / 2) * -cameraDistance,
+		// 	z: Math.cos((cameraAngle * Math.PI) / 2) * cameraDistance,
+		// };
+		// const targetRotation = { x: (Math.PI / 2) * cameraAngle, y: 0, z: 0 };
+
+		// if (!animate) {
+		// 	this.camera.position.set(
+		// 		targetPosition.x,
+		// 		targetPosition.y,
+		// 		targetPosition.z,
+		// 	);
+		// 	this.camera.rotation.set(
+		// 		targetRotation.x,
+		// 		targetRotation.y,
+		// 		targetRotation.z,
+		// 	);
+		// 	return;
+		// }
+
+		// gsap.to(this.camera.position, {
+		// 	z: targetPosition.z,
+		// 	duration: this.focusDuration / 1000,
+		// 	ease: "power2.inOut",
+		// });
+
+		// sleep(this.focusDuration - this.focusShiftDuration).then(() => {
+		// 	gsap.to(this.camera.position, {
+		// 		x: targetPosition.x,
+		// 		duration: this.focusShiftDuration / 1000,
+		// 		ease: "power2.inOut",
+		// 	});
+
+		// 	gsap.to(this.camera.position, {
+		// 		y: targetPosition.y,
+		// 		duration: this.focusShiftDuration / 1000,
+		// 		ease: "power2.inOut",
+		// 	});
+
+		// 	gsap.to(this.camera.rotation, {
+		// 		...targetRotation,
+		// 		duration: this.focusShiftDuration / 1000,
+		// 		ease: "power2.inOut",
+		// 	});
+		// });
 	}
 
 	private async focusActiveArea(
@@ -942,7 +998,7 @@ export default class Flipbook {
 		const page = this.pages[Math.floor(area.faceIndex / 2)];
 		const isBackside = area.faceIndex % 2 === 1;
 		const corners = page.getPageAreaCorners(area, isBackside);
-		this.watchRectangle(corners, distanceMultiplier);
+		this.watchRectangle(corners, distanceMultiplier, true);
 
 		this.focusedActiveArea = area;
 

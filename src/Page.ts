@@ -6,7 +6,7 @@ import {
 	lerp,
 	clamp,
 } from "./util";
-import BezierCurveVisualizer from "./BezierCurveVisualizer";
+// import BezierCurveVisualizer from "./BezierCurveVisualizer";
 
 export default class Page {
 	public textureUrls;
@@ -33,7 +33,7 @@ export default class Page {
 	private isFrontCover: boolean;
 	private hasTurnProgressUpdated = false;
 
-	private curveVisualizer: BezierCurveVisualizer;
+	// private curveVisualizer: BezierCurveVisualizer;
 
 	constructor(pageParams: PageParams) {
 		this.textureUrls = pageParams.textureUrls;
@@ -134,7 +134,7 @@ export default class Page {
 
 		uv.needsUpdate = true;
 
-		this.curveVisualizer = new BezierCurveVisualizer(this.mesh);
+		// this.curveVisualizer = new BezierCurveVisualizer(this.mesh);
 	}
 
 	private getCurve() {
