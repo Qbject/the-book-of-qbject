@@ -8,6 +8,7 @@ import * as dat from "dat.gui";
 import VideoOverlay from "./video-overlay";
 import SlidingNumber, { ValueChangeEvent } from "./SlidingNumber";
 import SwipeHandler from "./SwipeHandler";
+import IntroOverlay from "./intro-overlay";
 
 export default class Flipbook {
 	private containerEl: HTMLElement;
@@ -70,6 +71,7 @@ export default class Flipbook {
 	private textureLoader: THREE.TextureLoader;
 	private initCompleted: boolean = false;
 	private videoOverlay: VideoOverlay;
+	private introOverlay: IntroOverlay;
 
 	private focusedActiveArea: PageActiveArea | null = null;
 	private isChangingFocus = false;
@@ -80,6 +82,11 @@ export default class Flipbook {
 	private cameraSideShift = new SlidingNumber(1, 0.2);
 	private isVerticalMode = false;
 	private swipeHandler: SwipeHandler;
+
+	// if this code is running, means the scripts are already loaded
+	private scriptProgressWeight = 0.4;
+
+	private introPhase: "LOADING" | "ANIMATING" | "COMPLETED" = "LOADING";
 
 	constructor(params: FlipBookParams) {
 		this.containerEl = params.containerEl;
@@ -100,6 +107,28 @@ export default class Flipbook {
 		this.pageActiveAreas.forEach(area =>
 			this.videoOverlay.addVideo(area?.video),
 		);
+
+		this.introOverlay = new IntroOverlay(
+			this.containerEl.querySelector(".intro-overlay")!,
+		);
+		this.introOverlay.onProgress(this.scriptProgressWeight);
+
+		THREE.DefaultLoadingManager.onProgress = (
+			_,
+			itemsLoaded,
+			itemsTotal,
+		) => {
+			if (this.introPhase === "COMPLETED") return;
+
+			const assetsProgress = itemsLoaded / itemsTotal;
+			const overallProgress =
+				this.scriptProgressWeight +
+				assetsProgress * (1 - this.scriptProgressWeight);
+			this.introOverlay.onProgress(overallProgress);
+			if (overallProgress === 1) {
+				this.playIntro();
+			}
+		};
 
 		this.scene = new THREE.Scene();
 		this.camera = new THREE.PerspectiveCamera(
@@ -414,6 +443,7 @@ export default class Flipbook {
 					if (this.isTurning()) {
 						const tp = progress - this.getTurningPage()!;
 						this.cameraSideShift.setValue((1 - tp) * 2 - 1);
+						console.log(this.cameraSideShift.getValue());
 					} else {
 						this.cameraSideShift.setValue(
 							Math.round(this.cameraSideShift.getValue()),
@@ -435,9 +465,6 @@ export default class Flipbook {
 				}
 			},
 		);
-
-		// main loop
-		this.runAnimation();
 	}
 
 	private getTurningPage(): number | null {
@@ -531,7 +558,11 @@ export default class Flipbook {
 		if (!dt) return;
 		this.initCompleted = true;
 
-		if (!this.isChangingFocus && !this.focusedActiveArea) {
+		if (
+			!this.isChangingFocus &&
+			!this.focusedActiveArea &&
+			this.introPhase === "COMPLETED"
+		) {
 			this.restoreCamera();
 		}
 
@@ -802,7 +833,7 @@ export default class Flipbook {
 		);
 	}
 
-	public watchRectangle(
+	public async watchRectangle(
 		corners: THREE.Vector3[],
 		distanceMultiplier: number = 1,
 		animate = false,
@@ -888,8 +919,9 @@ export default class Flipbook {
 			});
 		};
 
-		if (restDelay) sleep(restDelay).then(animateRest);
-		else animateRest();
+		if (restDelay) await sleep(restDelay);
+		animateRest();
+		await sleep(restDuration);
 	}
 
 	public async restoreCamera(animate = false) {
@@ -921,68 +953,7 @@ export default class Flipbook {
 		corners.forEach(point => point.applyMatrix4(rotationMatrix));
 
 		const { cameraDistance } = this.settings;
-		this.watchRectangle(corners, cameraDistance, animate, true);
-
-		// const { cameraAngle } = this.settings;
-
-		// const distanceMultiplier = 1.2;
-		// const fovYRadians = THREE.MathUtils.degToRad(this.camera.fov);
-		// const aspect = this.camera.aspect;
-		// const hFOV = 2 * Math.atan(Math.tan(fovYRadians / 2) * aspect);
-		// const minDistance =
-		// 	(this.pageWidth / 2 / Math.tan(hFOV / 2)) * distanceMultiplier;
-
-		// const cameraDistance = Math.max(
-		// 	minDistance,
-		// 	this.settings.cameraDistance,
-		// );
-
-		// const targetPosition = {
-		// 	x: (this.cameraSideShift.getValue() * this.pageWidth) / 2,
-		// 	y: Math.sin((cameraAngle * Math.PI) / 2) * -cameraDistance,
-		// 	z: Math.cos((cameraAngle * Math.PI) / 2) * cameraDistance,
-		// };
-		// const targetRotation = { x: (Math.PI / 2) * cameraAngle, y: 0, z: 0 };
-
-		// if (!animate) {
-		// 	this.camera.position.set(
-		// 		targetPosition.x,
-		// 		targetPosition.y,
-		// 		targetPosition.z,
-		// 	);
-		// 	this.camera.rotation.set(
-		// 		targetRotation.x,
-		// 		targetRotation.y,
-		// 		targetRotation.z,
-		// 	);
-		// 	return;
-		// }
-
-		// gsap.to(this.camera.position, {
-		// 	z: targetPosition.z,
-		// 	duration: this.focusDuration / 1000,
-		// 	ease: "power2.inOut",
-		// });
-
-		// sleep(this.focusDuration - this.focusShiftDuration).then(() => {
-		// 	gsap.to(this.camera.position, {
-		// 		x: targetPosition.x,
-		// 		duration: this.focusShiftDuration / 1000,
-		// 		ease: "power2.inOut",
-		// 	});
-
-		// 	gsap.to(this.camera.position, {
-		// 		y: targetPosition.y,
-		// 		duration: this.focusShiftDuration / 1000,
-		// 		ease: "power2.inOut",
-		// 	});
-
-		// 	gsap.to(this.camera.rotation, {
-		// 		...targetRotation,
-		// 		duration: this.focusShiftDuration / 1000,
-		// 		ease: "power2.inOut",
-		// 	});
-		// });
+		await this.watchRectangle(corners, cameraDistance, animate, true);
 	}
 
 	private async focusActiveArea(
@@ -998,12 +969,10 @@ export default class Flipbook {
 		const page = this.pages[Math.floor(area.faceIndex / 2)];
 		const isBackside = area.faceIndex % 2 === 1;
 		const corners = page.getPageAreaCorners(area, isBackside);
-		this.watchRectangle(corners, distanceMultiplier, true);
 
 		this.focusedActiveArea = area;
-
 		this.isChangingFocus = true;
-		await sleep(this.focusDuration);
+		await this.watchRectangle(corners, distanceMultiplier, true);
 		this.isChangingFocus = false;
 	}
 
@@ -1031,11 +1000,104 @@ export default class Flipbook {
 		if (this.isChangingFocus) return;
 
 		this.focusedActiveArea = null;
-		this.restoreCamera(true);
 		this.videoOverlay.close();
 
 		this.isChangingFocus = true;
-		await sleep(this.focusDuration);
+		await this.restoreCamera(true);
 		this.isChangingFocus = false;
+	}
+
+	private async playIntro() {
+		const logoEl = this.introOverlay.dom.logo;
+
+		this.introPhase = "ANIMATING";
+
+		// catch the current logo opacity value
+		const currentOpacity = window.getComputedStyle(logoEl).opacity;
+		logoEl.style.opacity = currentOpacity;
+		logoEl.style.animation = "none";
+
+		// Trigger reflow to ensure the transition starts correctly
+		logoEl.offsetHeight; // Reading the offsetHeight forces reflow
+
+		logoEl.style.opacity = "1";
+
+		await sleep(500); // let logo and progress settle
+
+		// remember the light values and turn them off
+		const spotLightIntensity = this.spotLight.intensity;
+		const ambientLightIntensity = this.ambientLight.intensity;
+
+		this.spotLight.intensity = 0;
+		this.ambientLight.intensity = 0;
+
+		// perform initial setup
+		this.update(1);
+
+		// prepare camera for intro animation
+		const logoArea: PageArea = {
+			top: 582.5 / this.pageHeight,
+			left: 279 / this.pageWidth,
+			width: 204 / this.pageWidth,
+			height: 204 / this.pageHeight,
+		};
+		const corners = this.pages[0].getPageAreaCorners(logoArea);
+		await this.watchRectangle(corners, 1.95);
+
+		// run the main loop
+		this.runAnimation();
+
+		this.introOverlay.dom.progress.style.opacity = "0";
+
+		await sleep(200); // make sure the hard work is done
+
+		// logoEl.style.filter = "drop-shadow(0 0 10px white)";
+		logoEl.style.filter =
+			"drop-shadow(0 0 10px white) drop-shadow(0 0 20px white) drop-shadow(0 0 40px white)";
+
+		gsap.to(this.spotLight, {
+			intensity: spotLightIntensity,
+			duration: 1.5,
+			// ease: "elastic.out(1, 0.3)", // Elastic ease with overshoot
+			ease: "power2.inOut",
+		});
+
+		gsap.to(this.ambientLight, {
+			intensity: ambientLightIntensity,
+			duration: 1.5,
+			ease: "power2.inOut",
+		});
+
+		await sleep(750); // wait till the max brightness
+
+		await sleep(500); // wait on the max brightness
+
+		logoEl.style.opacity = "0";
+		logoEl.style.filter = "";
+
+		await sleep(800); // let opacity and filter transition
+
+		await this.restoreCamera(true);
+		await sleep(500);
+
+		// open the first page
+		const animationTarget = { progress: 0 };
+		this.progress.lock();
+		this.progress.setMin(0);
+		this.progress.setMax(1);
+		await gsap.to(animationTarget, {
+			progress: 1,
+			duration: 2,
+			ease: "power2.inOut",
+			onUpdate: () => {
+				this.progress.setValue(animationTarget.progress);
+				this.restoreCamera();
+			},
+		});
+		this.progress.release();
+
+		// finalize
+		this.introOverlay.dom.container.style.display = "none";
+		this.introPhase = "COMPLETED";
 	}
 }

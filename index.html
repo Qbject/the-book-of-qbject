@@ -7,9 +7,101 @@
 			content="width=device-width, initial-scale=1.0, user-scalable=no"
 		/>
 		<title>Qbject :: About me</title>
+		<style>
+			/* instantly show the loading state */
+
+			body {
+				background-color: black;
+			}
+
+			.intro-overlay {
+				position: absolute;
+				z-index: 1;
+				inset: 0;
+				transition-property: background-color;
+				transition-duration: 800ms;
+				transition-timing-function: ease-in;
+			}
+
+			@keyframes loading {
+				0% {
+					opacity: 0.2;
+				}
+				50% {
+					opacity: 0.5;
+				}
+				100% {
+					opacity: 0.2;
+				}
+			}
+
+			.intro-overlay > .centered-box {
+				position: absolute;
+				inset: 50%;
+				transform: translateX(-50%) translateY(-50%);
+				width: 100vmin;
+				height: 100vmin;
+				/* max-width: 500px;
+				max-height: 500px; */
+			}
+
+			.intro-overlay .centered-box > .logo {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translateX(-50%) translateY(-50%);
+				width: 50%;
+				height: 50%;
+				animation: loading 2s infinite;
+				user-select: none;
+				opacity: 0;
+				transition:
+					opacity 400ms ease-out,
+					filter 750ms ease-out;
+			}
+
+			.intro-overlay .centered-box > .progress {
+				position: absolute;
+				bottom: 18%;
+				left: 50%;
+				transform: translateX(-50%);
+				width: 35%;
+				height: 3px;
+				background-color: rgba(255, 255, 255, 0.2);
+				transition-property: opacity;
+				transition-duration: 500ms;
+				transition-timing-function: ease-out;
+			}
+
+			.intro-overlay .centered-box > .progress > .progress-inner {
+				position: absolute;
+				top: 0;
+				left: 0;
+				height: 100%;
+				width: 10%;
+				background-color: white;
+				will-change: width;
+				transition-property: width;
+				transition-duration: 400ms;
+				transition-timing-function: ease-out;
+				box-shadow:
+					0 0 10px rgba(255, 255, 255, 0.6),
+					0 0 20px rgba(255, 255, 255, 0.6),
+					0 0 30px rgba(255, 255, 255, 0.6);
+			}
+		</style>
 	</head>
 	<body>
-		<div id="flipbook-container"></div>
+		<div id="flipbook-container">
+			<div class="intro-overlay">
+				<div class="centered-box">
+					<img draggable="false" class="logo" src="/img/logo.svg" />
+					<div class="progress">
+						<div class="progress-inner"></div>
+					</div>
+				</div>
+			</div>
+		</div>
 		<script type="module" src="/src/main.ts"></script>
 	</body>
 </html>
