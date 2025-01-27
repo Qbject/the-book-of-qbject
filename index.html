@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0, user-scalable=no"
+		/>
+
+		<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+		<link
+			rel="icon"
+			type="image/png"
+			sizes="32x32"
+			href="/favicon-32x32.png"
+		/>
+		<link
+			rel="icon"
+			type="image/png"
+			sizes="16x16"
+			href="/favicon-16x16.png"
+		/>
+		<link
+			rel="apple-touch-icon"
+			sizes="180x180"
+			href="/apple-touch-icon.png"
+		/>
+
+		<title>Qbject :: About me</title>
+		<style>
+			/* instantly show the loading state */
+
+			body {
+				background-color: black;
+			}
+
+			.intro-overlay {
+				position: absolute;
+				z-index: 1;
+				inset: 0;
+				transition-property: background-color;
+				transition-duration: 800ms;
+				transition-timing-function: ease-in;
+			}
+
+			@keyframes loading {
+				0% {
+					opacity: 0.2;
+				}
+				50% {
+					opacity: 0.5;
+				}
+				100% {
+					opacity: 0.2;
+				}
+			}
+
+			.intro-overlay > .centered-box {
+				position: absolute;
+				inset: 50%;
+				transform: translateX(-50%) translateY(-50%);
+				width: 100vmin;
+				height: 100vmin;
+				/* max-width: 500px;
+				max-height: 500px; */
+			}
+
+			.intro-overlay .centered-box > .logo {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translateX(-50%) translateY(-50%);
+				width: 50%;
+				height: 50%;
+				animation: loading 2s infinite;
+				user-select: none;
+				opacity: 0;
+				transition:
+					opacity 400ms ease-out,
+					filter 750ms ease-out;
+			}
+
+			.intro-overlay .centered-box > .progress {
+				position: absolute;
+				bottom: 18%;
+				left: 50%;
+				transform: translateX(-50%);
+				width: 35%;
+				height: 3px;
+				background-color: rgba(255, 255, 255, 0.2);
+				transition-property: opacity;
+				transition-duration: 500ms;
+				transition-timing-function: ease-out;
+			}
+
+			.intro-overlay .centered-box > .progress > .progress-inner {
+				position: absolute;
+				top: 0;
+				left: 0;
+				height: 100%;
+				width: 10%;
+				background-color: white;
+				will-change: width;
+				transition-property: width;
+				transition-duration: 400ms;
+				transition-timing-function: ease-out;
+				box-shadow:
+					0 0 10px rgba(255, 255, 255, 0.6),
+					0 0 20px rgba(255, 255, 255, 0.6),
+					0 0 30px rgba(255, 255, 255, 0.6);
+			}
+		</style>
+		<script type="module" crossorigin src="/assets/index-CAmX4TcP.js"></script>
+		<link rel="stylesheet" crossorigin href="/assets/index-BfxsBS6Z.css">
+	</head>
+	<body>
+		<div id="flipbook-container">
+			<div class="intro-overlay">
+				<div class="centered-box">
+					<img draggable="false" class="logo" src="/img/logo.svg" />
+					<div class="progress">
+						<div class="progress-inner"></div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
