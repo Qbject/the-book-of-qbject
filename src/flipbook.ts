@@ -918,7 +918,12 @@ export default class Flipbook {
 			});
 		};
 
-		sleep(restDelay).then(animateRest);
+		if (restDelay) {
+			sleep(restDelay).then(animateRest);
+		} else {
+			// synchronous update is needed to prevent camera jittering
+			animateRest();
+		}
 		await sleep(this.focusDuration);
 	}
 
