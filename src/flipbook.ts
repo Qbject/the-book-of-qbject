@@ -443,7 +443,6 @@ export default class Flipbook {
 					if (this.isTurning()) {
 						const tp = progress - this.getTurningPage()!;
 						this.cameraSideShift.setValue((1 - tp) * 2 - 1);
-						console.log(this.cameraSideShift.getValue());
 					} else {
 						this.cameraSideShift.setValue(
 							Math.round(this.cameraSideShift.getValue()),
@@ -919,9 +918,8 @@ export default class Flipbook {
 			});
 		};
 
-		if (restDelay) await sleep(restDelay);
-		animateRest();
-		await sleep(restDuration);
+		sleep(restDelay).then(animateRest);
+		await sleep(this.focusDuration);
 	}
 
 	public async restoreCamera(animate = false) {
