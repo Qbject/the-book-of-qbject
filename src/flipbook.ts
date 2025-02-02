@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { gsap } from "gsap";
-import { rotateY, sleep } from "./util";
+import { rotateY, sleep, toggleVisibility } from "./util";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "stats.js";
 import Page from "./Page";
@@ -298,9 +298,11 @@ export default class Flipbook {
 		// Add fps counter
 		this.stats = new Stats();
 		this.stats.showPanel(0);
+		this.stats.dom.style.display = "none";
 		document.body.appendChild(this.stats.dom);
 
 		this.datGui = new dat.GUI();
+		this.datGui.domElement.style.display = "none";
 
 		const cameraFolder = this.datGui.addFolder("Camera");
 		cameraFolder.open();
@@ -395,6 +397,10 @@ export default class Flipbook {
 		document.addEventListener("keydown", (event: KeyboardEvent) => {
 			if (event.key === "Escape" || event.code === "Escape") {
 				this.unfocusActiveArea();
+			} else if (event.key === "d" || event.code === "KeyD") {
+				toggleVisibility(this.datGui.domElement);
+			} else if (event.key === "f" || event.code === "KeyF") {
+				toggleVisibility(this.stats.dom);
 			}
 		});
 

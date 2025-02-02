@@ -82,3 +82,11 @@ export function removeArrayItem<T>(array: T[], item: T): boolean {
 
 	return index !== -1;
 }
+
+export const toggleVisibility = (el: HTMLElement) => {
+	if (el.style.display === "none") {
+		el.style.display = "";
+	} else {
+		el.style.display = "none";
+	}
+};
