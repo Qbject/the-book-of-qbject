@@ -57,7 +57,7 @@ export default class Page {
 			texture.minFilter = THREE.LinearFilter;
 			texture.generateMipmaps = false;
 			// texture.anisotropy = 16;
-			return { map: texture };
+			return { map: texture, vertexColors: !this.isCover };
 		};
 		const _color = (hex: number) => ({
 			color: new THREE.Color(hex),
@@ -116,6 +116,8 @@ export default class Page {
 		const position = geometry.attributes.position;
 		const uv = geometry.attributes.uv;
 
+		const colors = new Float32Array(position.count * 3);
+
 		for (let i = 0; i < position.count; i++) {
 			const coord = new THREE.Vector3(
 				position.getX(i) / this.thickness + 0.5,
@@ -130,7 +132,16 @@ export default class Page {
 			}
 
 			this.vertexRelCoords[i] = coord;
+
+			// apply artificial ambient occlusion using vertex colors
+			const darken = clamp((1 - coord.z) ** 4 - 0.6, 0, 1);
+			colors[i * 3] = 1 - darken; // Red channel
+			colors[i * 3 + 1] = 1 - darken; // Green channel
+			colors[i * 3 + 2] = 1 - darken; // Blue channel
 		}
+
+		// Add the colors attribute to the geometry
+		geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
 
 		uv.needsUpdate = true;
 

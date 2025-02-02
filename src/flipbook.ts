@@ -24,24 +24,24 @@ export default class Flipbook {
 	private pageActiveAreas: PageActiveArea[] = [];
 	private pageEdgeColor: number;
 	public readonly settings: FlipbookSettings = {
-		cameraAngle: (Math.PI / 2) * 0.35,
-		cameraDistance: 1,
-		cameraFov: 20,
+		cameraAngle: (Math.PI / 2) * 0.28,
+		cameraDistance: 1.02,
+		cameraFov: 14,
 
-		spotLightX: 910,
-		spotLightY: 300,
-		spotLightZ: 1650,
+		spotLightX: 250,
+		spotLightY: 500,
+		spotLightZ: 1500,
 		spotLightColor: 0xffffff,
-		spotLightIntensity: 6684995,
+		spotLightIntensity: 60,
 		spotLightAngle: 0.7,
 		spotLightPenumbra: 0.6,
-		spotLightDecay: 2,
+		spotLightDecay: 0.4,
 		spotLightNearClip: 500,
 		spotLightFarClip: 3500,
 		spotLightMapSize: 2048,
 
 		ambientLightColor: 0xffffff,
-		ambientLightIntensity: 0.1,
+		ambientLightIntensity: 0.35,
 
 		showSpotLightHelper: false,
 		showSpotShadowHelper: false,
@@ -132,7 +132,7 @@ export default class Flipbook {
 
 		this.scene = new THREE.Scene();
 		this.camera = new THREE.PerspectiveCamera(
-			20,
+			this.settings.cameraFov,
 			window.innerWidth / window.innerHeight,
 			1,
 			10000,
@@ -202,7 +202,7 @@ export default class Flipbook {
 
 		this.spotLight = new THREE.SpotLight();
 		this.spotLight.castShadow = true;
-		// this.spotLight.shadow.bias = -0.0001; // TODO:
+		this.spotLight.shadow.bias = -0.0001;
 		this.scene.add(this.spotLight);
 
 		// this.controls = new OrbitControls(
@@ -934,10 +934,12 @@ export default class Flipbook {
 	public async restoreCamera(animate = false) {
 		const pw = this.pageWidth;
 		const ph = this.pageHeight;
-		const cornerTL = new THREE.Vector3(-pw, ph / 2, 0);
-		const cornerTR = new THREE.Vector3(pw, ph / 2, 0);
-		const cornerBL = new THREE.Vector3(-pw, ph / -2, 0);
-		const cornerBR = new THREE.Vector3(pw, ph / -2, 0);
+		const yShift = -ph * 0.011; // 1.1% down
+
+		const cornerTL = new THREE.Vector3(-pw, ph / 2 + yShift, 0);
+		const cornerTR = new THREE.Vector3(pw, ph / 2 + yShift, 0);
+		const cornerBL = new THREE.Vector3(-pw, ph / -2 + yShift, 0);
+		const cornerBR = new THREE.Vector3(pw, ph / -2 + yShift, 0);
 
 		const corners = [cornerTL, cornerTR, cornerBL, cornerBR];
 
