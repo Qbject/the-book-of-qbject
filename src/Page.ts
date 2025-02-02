@@ -175,7 +175,7 @@ export default class Page {
 				: this.elevationLeft;
 
 			// elevation of the second control point
-			const p2baseElevation = 15;
+			const p2baseElevation = 30;
 			const p2elev = eFactorSin * (maxHeight + p2baseElevation) * 2;
 			// elevation of the 3rd and the 4th control points
 			const p34elev = eFactorCos * maxHeight;

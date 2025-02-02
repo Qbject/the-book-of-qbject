@@ -202,7 +202,7 @@ export default class Flipbook {
 
 		this.spotLight = new THREE.SpotLight();
 		this.spotLight.castShadow = true;
-		this.spotLight.shadow.bias = -0.0001;
+		// this.spotLight.shadow.bias = -0.0001; // TODO:
 		this.scene.add(this.spotLight);
 
 		// this.controls = new OrbitControls(
@@ -264,7 +264,11 @@ export default class Flipbook {
 				const elevationLeft =
 					spinePlacementShift + page.rootThickness / 2;
 				const elevationRight = this.spineWidth - elevationLeft;
-				page.setElevation(elevationLeft, elevationRight);
+				const elevationMultiplier = 0.7;
+				page.setElevation(
+					elevationLeft * elevationMultiplier,
+					elevationRight * elevationMultiplier,
+				);
 
 				page.pivot.position.z = this.spineZ + this.coverThickness / 2;
 				page.pivot.position.x =
