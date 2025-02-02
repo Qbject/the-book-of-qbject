@@ -134,7 +134,7 @@ export default class Flipbook {
 		this.camera = new THREE.PerspectiveCamera(
 			this.settings.cameraFov,
 			window.innerWidth / window.innerHeight,
-			1500,
+			1200,
 			9000,
 		);
 
