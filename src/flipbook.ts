@@ -280,7 +280,7 @@ export default class Flipbook {
 		});
 
 		// create desk
-		const deskGeometry = new THREE.PlaneGeometry(3000, 2250, 1, 1);
+		const deskGeometry = new THREE.PlaneGeometry(5216, 1956, 1, 1);
 		const deskTexture = this.textureLoader.load(this.textureUrls.desk);
 		deskTexture.colorSpace = THREE.SRGBColorSpace;
 		const deskMaterial = new THREE.MeshStandardMaterial({
