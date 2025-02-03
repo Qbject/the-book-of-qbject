@@ -370,7 +370,9 @@ export default class Flipbook {
 
 		this.swipeHandler = new SwipeHandler(this.renderer.domElement);
 		this.swipeHandler.addCallback("swipeStart", () => {
+			if (this.focusedActiveArea || this.isChangingFocus) return;
 			// continuing dropped turn or shift
+			// TODO: refactor; make it more comprehendable
 			this.isTurning() && this.progress.lock();
 			!this.cameraSideShift.isSettled() && this.cameraSideShift.lock();
 		});
@@ -378,9 +380,10 @@ export default class Flipbook {
 			this.progress.release();
 			this.cameraSideShift.release();
 		});
-		this.swipeHandler.addCallback("swipeMove", (swipe: Swipe) =>
-			this.onSwipeMove(swipe),
-		);
+		this.swipeHandler.addCallback("swipeMove", (swipe: Swipe) => {
+			if (this.focusedActiveArea || this.isChangingFocus) return;
+			this.onSwipeMove(swipe);
+		});
 
 		document.addEventListener("keydown", (event: KeyboardEvent) => {
 			if (event.key === "Escape" || event.code === "Escape") {
@@ -1142,6 +1145,7 @@ export default class Flipbook {
 
 		// finalize
 		this.introOverlay.dom.container.style.display = "none";
+		this.updateCursor();
 		this.introPhase = "COMPLETED";
 	}
 }
