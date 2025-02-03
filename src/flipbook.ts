@@ -75,7 +75,7 @@ export default class Flipbook {
 
 	private focusedActiveArea: PageActiveArea | null = null;
 	private isChangingFocus = false;
-	// @remark, css values has to be changed individually
+	// @remark, css values should be changed individually
 	private focusDuration = 1100;
 	private focusShiftDuration = 800;
 	private CAMERA_SIDE_GRAVITY = 4;
@@ -361,23 +361,11 @@ export default class Flipbook {
 
 		// process interactive areas
 		this.renderer.domElement.addEventListener("mousemove", event => {
-			if (this.focusedActiveArea || this.isChangingFocus) {
-				return;
-			}
 			this.sceneMousePos.x = (event.clientX / window.innerWidth) * 2 - 1;
 			this.sceneMousePos.y =
 				-(event.clientY / window.innerHeight) * 2 + 1;
-			const activeArea = this.getActiveAreaAt(this.sceneMousePos);
-			this.wrapperLinkEl.style.cursor = activeArea ? "pointer" : "";
-			this.wrapperLinkEl.title = activeArea?.title || "";
 
-			if (activeArea?.link) {
-				let href = activeArea.link;
-				if (typeof href !== "string") href = href();
-				this.wrapperLinkEl.setAttribute("href", href);
-			} else {
-				this.wrapperLinkEl.removeAttribute("href");
-			}
+			this.updateCursor();
 		});
 
 		this.swipeHandler = new SwipeHandler(this.renderer.domElement);
@@ -474,6 +462,45 @@ export default class Flipbook {
 				}
 			},
 		);
+	}
+
+	private updateCursor() {
+		let cursor = "grab";
+		let href = "";
+		let title = "";
+
+		if (this.isChangingFocus) {
+			cursor = "default";
+		} else if (this.focusedActiveArea) {
+			cursor = "pointer";
+		} else if (
+			(this.isTurning() || this.isShifting()) &&
+			this.swipeHandler.isPointerDown()
+		) {
+			cursor = "ew-resize";
+		} else {
+			const activeArea = this.getActiveAreaAt(this.sceneMousePos);
+
+			if (activeArea) {
+				cursor = "pointer";
+				title = activeArea.title || "";
+
+				if (typeof activeArea.link === "function") {
+					href = activeArea.link();
+				} else {
+					href = activeArea.link || "";
+				}
+			}
+		}
+
+		// applying cursor, href and title
+		this.wrapperLinkEl.style.cursor = cursor;
+		this.wrapperLinkEl.title = title;
+		if (href) {
+			this.wrapperLinkEl.setAttribute("href", href);
+		} else {
+			this.wrapperLinkEl.removeAttribute("href");
+		}
 	}
 
 	private getTurningPage(): number | null {
@@ -977,10 +1004,6 @@ export default class Flipbook {
 	) {
 		if (this.isChangingFocus) return;
 
-		this.wrapperLinkEl.removeAttribute("href");
-		this.wrapperLinkEl.style.cursor = "";
-		this.wrapperLinkEl.title = "";
-
 		const page = this.pages[Math.floor(area.faceIndex / 2)];
 		const isBackside = area.faceIndex % 2 === 1;
 		const corners = page.getPageAreaCorners(area, isBackside);
@@ -989,26 +1012,30 @@ export default class Flipbook {
 		this.isChangingFocus = true;
 		await this.watchRectangle(corners, distanceMultiplier, true);
 		this.isChangingFocus = false;
+
+		this.updateCursor();
 	}
 
 	private async onBookClick(sceneMousePos: THREE.Vector2) {
-		if (this.isChangingFocus) return;
+		if (!this.isChangingFocus) {
+			if (this.focusedActiveArea) {
+				this.unfocusActiveArea();
+			} else {
+				// handle active area click
+				const area = this.getActiveAreaAt(sceneMousePos);
 
-		if (this.focusedActiveArea) {
-			this.unfocusActiveArea();
-			return;
+				if (area?.video) {
+					this.videoOverlay.open(area.video);
+					this.focusActiveArea(area, 1.125);
+				}
+
+				if (area?.zoom) {
+					this.focusActiveArea(area, 1.05);
+				}
+			}
 		}
 
-		const area = this.getActiveAreaAt(sceneMousePos);
-
-		if (area?.video) {
-			this.videoOverlay.open(area.video);
-			this.focusActiveArea(area, 1.125);
-		}
-
-		if (area?.zoom) {
-			this.focusActiveArea(area, 1.05);
-		}
+		this.updateCursor();
 	}
 
 	private async unfocusActiveArea() {
@@ -1020,6 +1047,8 @@ export default class Flipbook {
 		this.isChangingFocus = true;
 		await this.restoreCamera(true);
 		this.isChangingFocus = false;
+
+		this.updateCursor();
 	}
 
 	private async playIntro() {
