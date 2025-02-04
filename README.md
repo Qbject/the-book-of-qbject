@@ -2,6 +2,8 @@
 
 Portfolio/Personal site web app styled as a fancy interactive 3D book.
 
+![preview](https://github.com/user-attachments/assets/d9f822a4-b90c-404d-a75a-7302f6d6fe6e)
+
 https://github.com/user-attachments/assets/bebbe2ac-80ae-43fc-a04e-3d14924ad761
 
 The project is built with Three.js, TypeScript, HTML and CSS. Pages content was made using Figma, Paint.net, Photoshop and Photopea and include several public domain and royalty-free illustrations. Demo videos were recorded and edited with ShareX, OBS Studio, Shotcut and DaVinci Resolve. Assets are hosted in the separate repository - https://github.com/Qbject/tboq-assets
