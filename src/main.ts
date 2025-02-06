@@ -65,7 +65,7 @@ document.addEventListener("DOMContentLoaded", () => {
 			spineEdgeLR: _url("/img/pages/cover-edge-tb.jpg"),
 			desk: _url("/img/desk.jpg"),
 		},
-		pageEdgeColor: 0xdbc9a2,
+		pageEdgeColor: 0xB1A283,
 		pageWidth,
 		pageHeight,
 		coverThickness: 5,
