@@ -1,6 +1,12 @@
 import * as THREE from "three";
 import { gsap } from "gsap";
-import { rotateY, sleep, toggleVisibility } from "./util";
+import {
+	lerpRectangles,
+	rotateY,
+	scaleRectangle,
+	sleep,
+	toggleVisibility,
+} from "./util";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "stats.js";
 import Page from "./Page";
@@ -76,8 +82,6 @@ export default class Flipbook {
 	private focusedActiveArea: PageActiveArea | null = null;
 	private isChangingFocus = false;
 	// @remark, css values should be changed individually
-	private focusDuration = 1100;
-	private focusShiftDuration = 800;
 	private CAMERA_SIDE_GRAVITY = 4;
 	private cameraSideShift = new SlidingNumber(1, 0.2);
 	private isVerticalMode = false;
@@ -872,12 +876,70 @@ export default class Flipbook {
 		);
 	}
 
-	public async watchRectangle(
+	public async watchArea(
 		corners: THREE.Vector3[],
-		distanceMultiplier: number = 1,
-		animate = false,
-		reverseAnimation = false,
+		preset: "direct" | "page-zoom" | "page-unzoom" = "direct",
+		duration = 0,
 	) {
+		const targetPos = this.getCameraPos(corners);
+
+		let restFinishAt = 1;
+		if (preset === "page-zoom" || preset === "page-unzoom") {
+			// all properties except z finish transition at 73% of animation
+			restFinishAt = 0.73;
+		}
+
+		let [zDuration, restDuration, restDelay] = [0, 0, 0];
+		if (duration) {
+			zDuration = duration;
+			restDuration = duration * restFinishAt;
+
+			if (preset === "page-unzoom") {
+				restDelay = duration * (1 - restFinishAt);
+			}
+		}
+
+		const ease = "power2.inOut";
+
+		gsap.to(this.camera.position, {
+			z: targetPos.position.z,
+			duration: zDuration / 1000,
+			ease,
+		});
+
+		const animateRest = () => {
+			gsap.to(this.camera.position, {
+				x: targetPos.position.x,
+				duration: restDuration / 1000,
+				ease,
+			});
+
+			gsap.to(this.camera.position, {
+				y: targetPos.position.y,
+				duration: restDuration / 1000,
+				ease,
+			});
+
+			gsap.to(this.camera.quaternion, {
+				x: targetPos.rotation.x,
+				y: targetPos.rotation.y,
+				z: targetPos.rotation.z,
+				w: targetPos.rotation.w,
+				duration: restDuration / 1000,
+				ease,
+			});
+		};
+
+		if (restDelay) {
+			sleep(restDelay).then(animateRest);
+		} else {
+			// synchronous update is needed to prevent camera jittering
+			animateRest();
+		}
+		await sleep(duration);
+	}
+
+	public getCameraPos(corners: THREE.Vector3[]) {
 		const [TL, TR, BL, BR] = corners;
 
 		const center = new THREE.Vector3()
@@ -901,13 +963,13 @@ export default class Flipbook {
 
 		const distanceH = width / 2 / Math.tan(hFOV / 2);
 		const distanceV = height / 2 / Math.tan(fovYRadians / 2);
-		const distance = Math.max(distanceH, distanceV) * distanceMultiplier;
+		const distance = Math.max(distanceH, distanceV);
 
-		const targetPosition = {
-			x: center.x + normal.x * distance,
-			y: center.y + normal.y * distance,
-			z: center.z + normal.z * distance,
-		};
+		const targetPosition = new THREE.Vector3(
+			center.x + normal.x * distance,
+			center.y + normal.y * distance,
+			center.z + normal.z * distance,
+		);
 
 		// Calculate the quaternion for the target rotation
 		const targetQuaternion = new THREE.Quaternion();
@@ -919,55 +981,19 @@ export default class Flipbook {
 			targetDirection,
 		);
 
-		let [zDuration, restDuration, restDelay] = [0, 0, 0];
-		if (animate) {
-			zDuration = this.focusDuration;
-			restDuration = this.focusShiftDuration;
-
-			if (reverseAnimation) {
-				restDelay = this.focusDuration - this.focusShiftDuration;
-			}
-		}
-
-		gsap.to(this.camera.position, {
-			z: targetPosition.z,
-			duration: zDuration / 1000,
-			ease: "power2.inOut",
-		});
-
-		const animateRest = () => {
-			gsap.to(this.camera.position, {
-				x: targetPosition.x,
-				duration: restDuration / 1000,
-				ease: "power2.inOut",
-			});
-
-			gsap.to(this.camera.position, {
-				y: targetPosition.y,
-				duration: restDuration / 1000,
-				ease: "power2.inOut",
-			});
-
-			gsap.to(this.camera.quaternion, {
-				x: targetQuaternion.x,
-				y: targetQuaternion.y,
-				z: targetQuaternion.z,
-				w: targetQuaternion.w,
-				duration: restDuration / 1000,
-				ease: "power2.inOut",
-			});
+		return {
+			position: targetPosition,
+			rotation: targetQuaternion,
 		};
-
-		if (restDelay) {
-			sleep(restDelay).then(animateRest);
-		} else {
-			// synchronous update is needed to prevent camera jittering
-			animateRest();
-		}
-		await sleep(this.focusDuration);
 	}
 
-	public async restoreCamera(animate = false) {
+	public async restoreCamera(duration = 0) {
+		await this.watchArea(this.getBaseViewRect(), "page-unzoom", duration);
+	}
+
+	public getBaseViewRect(
+		overrideSettings: null | Partial<FlipbookSettings> = null,
+	) {
 		const pw = this.pageWidth;
 		const ph = this.pageHeight;
 		const yShift = -ph * 0.011; // 1.1% down
@@ -993,12 +1019,15 @@ export default class Flipbook {
 			});
 		}
 
-		const { cameraAngle } = this.settings;
+		// rotate the target rectangle
+		const cameraAngle =
+			overrideSettings?.cameraAngle || this.settings.cameraAngle;
+		const cameraDistance =
+			overrideSettings?.cameraDistance || this.settings.cameraDistance;
 		let rotationMatrix = new THREE.Matrix4().makeRotationX(cameraAngle);
 		corners.forEach(point => point.applyMatrix4(rotationMatrix));
 
-		const { cameraDistance } = this.settings;
-		await this.watchRectangle(corners, cameraDistance, animate, true);
+		return scaleRectangle(corners, cameraDistance);
 	}
 
 	private async focusActiveArea(
@@ -1013,7 +1042,11 @@ export default class Flipbook {
 
 		this.focusedActiveArea = area;
 		this.isChangingFocus = true;
-		await this.watchRectangle(corners, distanceMultiplier, true);
+		await this.watchArea(
+			scaleRectangle(corners, distanceMultiplier),
+			"page-zoom",
+			1100,
+		);
 		this.isChangingFocus = false;
 
 		this.updateCursor();
@@ -1048,13 +1081,78 @@ export default class Flipbook {
 		this.videoOverlay.close();
 
 		this.isChangingFocus = true;
-		await this.restoreCamera(true);
+		await this.restoreCamera(1100);
 		this.isChangingFocus = false;
 
 		this.updateCursor();
 	}
 
 	private async playIntro() {
+		const bottomViewSettings = {
+			// cameraAngle: 1.047,
+			// cameraAngle: 0.9,
+			cameraAngle: 0.8,
+			// cameraDistance: 0.742,
+			// cameraDistance: 0.75,
+			cameraDistance: 0.85,
+		};
+
+		const transitionToBottomView = async (durationMs: number) => {
+			const animation1 = { progress: 0 };
+			await gsap.to(animation1, {
+				progress: 1,
+				duration: durationMs / 1000,
+				ease: "power2.inOut",
+				onUpdate: () => {
+					const bottomViewRect =
+						this.getBaseViewRect(bottomViewSettings);
+					this.watchArea(
+						lerpRectangles(
+							logoCorners,
+							bottomViewRect,
+							animation1.progress,
+						),
+					);
+				},
+			});
+		};
+
+		const openFirstPage = async (durationMs: number) => {
+			const animation = { progress: 0 };
+			this.progress.lock();
+			this.progress.setMin(0);
+			this.progress.setMax(1);
+			await gsap.to(animation, {
+				progress: 1,
+				duration: durationMs / 1000,
+				ease: "power2.inOut",
+				onUpdate: () => {
+					this.progress.setValue(animation.progress);
+				},
+				onComplete: () => {
+					this.progress.release();
+				},
+			});
+		};
+
+		const transitionRaise = async (durationMs: number) => {
+			// temporarily apply bottom view settings and gradually raise to
+			// the base position
+			const originalSettings = { ...this.settings };
+			this.settings.cameraAngle = bottomViewSettings.cameraAngle;
+			this.settings.cameraDistance = bottomViewSettings.cameraDistance;
+
+			await gsap.to(this.settings, {
+				cameraDistance: originalSettings.cameraDistance,
+				cameraAngle: originalSettings.cameraAngle,
+				duration: durationMs / 1000,
+				ease: "power2.inOut",
+				onUpdate: () => {
+					this.restoreCamera();
+				},
+			});
+		};
+
 		const logoEl = this.introOverlay.dom.logo;
 
 		this.introPhase = "ANIMATING";
@@ -1088,15 +1186,18 @@ export default class Flipbook {
 			width: 204 / this.pageWidth,
 			height: 204 / this.pageHeight,
 		};
-		const corners = this.pages[0].getPageAreaCorners(logoArea);
-		await this.watchRectangle(corners, 1.95);
+		const logoCorners = scaleRectangle(
+			this.pages[0].getPageAreaCorners(logoArea),
+			1.95,
+		);
+		await this.watchArea(logoCorners);
 
 		// run the main loop
 		this.runAnimation();
 
 		this.introOverlay.dom.progress.style.opacity = "0";
 
-		await sleep(200); // make sure the hard work is done
+		await sleep(200); // make sure all the hard work is done
 
 		// logoEl.style.filter = "drop-shadow(0 0 10px white)";
 		logoEl.style.filter =
@@ -1117,31 +1218,18 @@ export default class Flipbook {
 
 		await sleep(750); // wait till the max brightness
 
-		await sleep(500); // wait on the max brightness
+		await sleep(500); // wait during the max brightness
 
 		logoEl.style.opacity = "0";
 		logoEl.style.filter = "";
 
-		await sleep(800); // let opacity and filter transition
+		await sleep(400); // let opacity and filter transition
 
-		await this.restoreCamera(true);
-		await sleep(500);
-
-		// open the first page
-		const animationTarget = { progress: 0 };
-		this.progress.lock();
-		this.progress.setMin(0);
-		this.progress.setMax(1);
-		await gsap.to(animationTarget, {
-			progress: 1,
-			duration: 2,
-			ease: "power2.inOut",
-			onUpdate: () => {
-				this.progress.setValue(animationTarget.progress);
-				this.restoreCamera();
-			},
-		});
-		this.progress.release();
+		transitionToBottomView(3000);
+		await sleep(2000);
+		openFirstPage(3500);
+		await sleep(1000);
+		await transitionRaise(4000);
 
 		// finalize
 		this.introOverlay.dom.container.style.display = "none";
