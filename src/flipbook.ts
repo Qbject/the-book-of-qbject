@@ -391,7 +391,9 @@ export default class Flipbook {
 
 		document.addEventListener("keydown", (event: KeyboardEvent) => {
 			if (event.key === "Escape" || event.code === "Escape") {
-				this.unfocusActiveArea();
+				if (this.introPhase === "COMPLETED") {
+					this.unfocusActiveArea();
+				}
 			} else if (event.key === "d" || event.code === "KeyD") {
 				toggleVisibility(this.datGui.domElement);
 			} else if (event.key === "f" || event.code === "KeyF") {
