@@ -1109,8 +1109,8 @@ export default class Flipbook {
 		};
 
 		const transitionToBottomView = async (durationMs: number) => {
-			const animation1 = { progress: 0 };
-			await gsap.to(animation1, {
+			const animation = { progress: 0 };
+			await gsap.to(animation, {
 				progress: 1,
 				duration: durationMs / 1000,
 				ease: "power2.inOut",
@@ -1121,7 +1121,7 @@ export default class Flipbook {
 						lerpRectangles(
 							logoCorners,
 							bottomViewRect,
-							animation1.progress,
+							animation.progress,
 						),
 					);
 				},
