@@ -1089,11 +1089,7 @@ export default class Flipbook {
 
 	private async playIntro() {
 		const bottomViewSettings = {
-			// cameraAngle: 1.047,
-			// cameraAngle: 0.9,
 			cameraAngle: 0.8,
-			// cameraDistance: 0.742,
-			// cameraDistance: 0.75,
 			cameraDistance: 0.85,
 		};
 
@@ -1153,7 +1149,69 @@ export default class Flipbook {
 			});
 		};
 
+		async function animateLogoFlash(durationMs: number): Promise<void> {
+			const phase1Duration = durationMs * 0.45;
+			const phase2Duration = durationMs * 0.3;
+			const phase3Duration = durationMs * 0.25;
+
+			// Phase 1: Increase shininess to max
+			logoEl.style.transition = `filter ${phase1Duration}ms ease-out`;
+			logoEl.style.filter =
+				"drop-shadow(0 0 10px white) drop-shadow(0 0 20px white) drop-shadow(0 0 40px white)";
+
+			logoShineEl.style.transition = `opacity ${phase1Duration / 2}ms ease-out ${phase1Duration / 2}ms, filter ${phase1Duration}ms ease-out ${phase1Duration / 2}ms, transform ${phase1Duration}ms ease-out ${phase1Duration / 2}ms`;
+			logoShineEl.style.filter = "brightness(2)";
+			logoShineEl.style.opacity = "0.075";
+			logoShineEl.style.transform =
+				"translateX(-50%) translateY(-50%) scale(1.2)";
+
+			await sleep(phase1Duration);
+
+			// Phase 2: Maintain maximum shininess
+			await sleep(phase2Duration);
+
+			// Phase 3: Decrease shininess and opacity
+			logoEl.style.transition = `filter ${phase3Duration}ms ease-in, opacity ${phase3Duration}ms ease-in`;
+			logoEl.style.filter = "none";
+			logoEl.style.opacity = "0";
+
+			logoShineEl.style.transition = `opacity ${phase3Duration / 2}ms ease-in-out, filter ${phase3Duration / 2}ms ease-in-out, transform ${phase3Duration / 2}ms ease-in-out`;
+			logoShineEl.style.filter = "brightness(1)";
+			logoShineEl.style.opacity = "0";
+			logoShineEl.style.transform =
+				"translateX(-50%) translateY(-50%) scale(1)";
+
+			await sleep(phase3Duration);
+		}
+
+		const animateLightFlash = async (durationMs: number) => {
+			const intensifyDurationMs = durationMs * 0.64;
+
+			gsap.to(this.spotLight, {
+				intensity: spotLightIntensity * 2,
+				duration: intensifyDurationMs / 1000,
+				ease: "power2.inOut",
+			});
+
+			sleep(intensifyDurationMs).then(() =>
+				gsap.to(this.spotLight, {
+					intensity: spotLightIntensity,
+					duration: (durationMs - intensifyDurationMs) / 1000,
+					ease: "power2.inOut",
+				}),
+			);
+
+			gsap.to(this.ambientLight, {
+				intensity: ambientLightIntensity,
+				duration: intensifyDurationMs / 1000,
+				ease: "power2.inOut",
+			});
+
+			await sleep(durationMs);
+		};
+
 		const logoEl = this.introOverlay.dom.logo;
+		const logoShineEl = this.introOverlay.dom.logoShine;
 
 		this.introPhase = "ANIMATING";
 
@@ -1199,32 +1257,8 @@ export default class Flipbook {
 
 		await sleep(200); // make sure all the hard work is done
 
-		// logoEl.style.filter = "drop-shadow(0 0 10px white)";
-		logoEl.style.filter =
-			"drop-shadow(0 0 10px white) drop-shadow(0 0 20px white) drop-shadow(0 0 40px white)";
-
-		gsap.to(this.spotLight, {
-			intensity: spotLightIntensity,
-			duration: 1.5,
-			// ease: "elastic.out(1, 0.3)", // Elastic ease with overshoot
-			ease: "power2.inOut",
-		});
-
-		gsap.to(this.ambientLight, {
-			intensity: ambientLightIntensity,
-			duration: 1.5,
-			ease: "power2.inOut",
-		});
-
-		await sleep(750); // wait till the max brightness
-
-		await sleep(500); // wait during the max brightness
-
-		logoEl.style.opacity = "0";
-		logoEl.style.filter = "";
-
-		await sleep(400); // let opacity and filter transition
-
+		animateLightFlash(2500);
+		await animateLogoFlash(2500);
 		transitionToBottomView(3000);
 		await sleep(2000);
 		openFirstPage(3500);

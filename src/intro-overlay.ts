@@ -2,6 +2,7 @@ export default class IntroOverlay {
 	public dom: {
 		container: HTMLDivElement;
 		logo: HTMLImageElement;
+		logoShine: HTMLImageElement;
 		progress: HTMLDivElement;
 		progressInner: HTMLDivElement;
 	};
@@ -10,6 +11,7 @@ export default class IntroOverlay {
 		this.dom = {
 			container,
 			logo: container.querySelector(".logo")!,
+			logoShine: container.querySelector(".logo-shine")!,
 			progress: container.querySelector(".progress")!,
 			progressInner: container.querySelector(".progress-inner")!,
 		};
