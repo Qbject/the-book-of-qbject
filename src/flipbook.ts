@@ -1103,11 +1103,6 @@ export default class Flipbook {
 	}
 
 	private async playIntro() {
-		const bottomViewSettings = {
-			cameraAngle: 0.8,
-			cameraDistance: 0.85,
-		};
-
 		const transitionToBottomView = async (durationMs: number) => {
 			const animation = { progress: 0 };
 			await gsap.to(animation, {
@@ -1206,15 +1201,14 @@ export default class Flipbook {
 				intensity: spotLightIntensity * 2,
 				duration: intensifyDurationMs / 1000,
 				ease: "power2.inOut",
+				onComplete: () => {
+					gsap.to(this.spotLight, {
+						intensity: spotLightIntensity,
+						duration: (durationMs - intensifyDurationMs) / 1000,
+						ease: "power2.inOut",
+					});
+				},
 			});
-
-			sleep(intensifyDurationMs).then(() =>
-				gsap.to(this.spotLight, {
-					intensity: spotLightIntensity,
-					duration: (durationMs - intensifyDurationMs) / 1000,
-					ease: "power2.inOut",
-				}),
-			);
 
 			gsap.to(this.ambientLight, {
 				intensity: ambientLightIntensity,
@@ -1224,6 +1218,18 @@ export default class Flipbook {
 
 			await sleep(durationMs);
 		};
+
+		const bottomViewSettings = {
+			cameraAngle: 0.8,
+			cameraDistance: 0.85,
+		};
+
+		// remember the light values and turn them off
+		const spotLightIntensity = this.spotLight.intensity;
+		const ambientLightIntensity = this.ambientLight.intensity;
+
+		this.spotLight.intensity = 0;
+		this.ambientLight.intensity = 0;
 
 		const logoEl = this.introOverlay.dom.logo;
 		const logoShineEl = this.introOverlay.dom.logoShine;
@@ -1241,13 +1247,6 @@ export default class Flipbook {
 		logoEl.style.opacity = "1";
 
 		await sleep(500); // let logo and progress settle
-
-		// remember the light values and turn them off
-		const spotLightIntensity = this.spotLight.intensity;
-		const ambientLightIntensity = this.ambientLight.intensity;
-
-		this.spotLight.intensity = 0;
-		this.ambientLight.intensity = 0;
 
 		// perform initial setup
 		this.update(1);
