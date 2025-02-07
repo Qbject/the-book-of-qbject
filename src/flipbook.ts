@@ -559,7 +559,7 @@ export default class Flipbook {
 				(this.isShifting() ||
 					(this.cameraSideShift.getValue() === -1 &&
 						progressDelta > 0 &&
-						this.progress.getValue() < this.pages.length - 1) ||
+						this.progress.getValue() < this.pages.length) ||
 					(this.cameraSideShift.getValue() === 1 &&
 						progressDelta < 0 &&
 						this.progress.getValue() > 0))
