@@ -1014,10 +1014,23 @@ export default class Flipbook {
 			});
 		}
 
+		// TODO: getBookOpenFactor
+		const bookOpenFactor = Math.min(
+			this.progress.getValue(),
+			this.pages.length - this.progress.getValue(),
+			1,
+		);
+		// compensate spine width to make book centered when it's closed
+		// TODO: it should depend on spineWidth
+		const sideShiftMultiplier = 1 + (1 - bookOpenFactor) * 0.105;
+
 		if (this.cameraSideShift) {
 			corners.forEach(point => {
 				point.x +=
-					(this.pageWidth * this.cameraSideShift.getValue()) / 2;
+					(this.pageWidth *
+						this.cameraSideShift.getValue() *
+						sideShiftMultiplier) /
+					2;
 			});
 		}
 
