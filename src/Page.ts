@@ -6,7 +6,6 @@ import {
 	lerp,
 	clamp,
 } from "./util";
-// import BezierCurveVisualizer from "./bezier-curve-visualizer";
 
 export default class Page {
 	public textureUrls;
@@ -32,8 +31,6 @@ export default class Page {
 	private textureLoader: THREE.TextureLoader;
 	private isFrontCover: boolean;
 	private hasTurnProgressUpdated = false;
-
-	// private curveVisualizer: BezierCurveVisualizer;
 
 	constructor(pageParams: PageParams) {
 		this.textureUrls = pageParams.textureUrls;
@@ -144,11 +141,9 @@ export default class Page {
 		geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
 
 		uv.needsUpdate = true;
-
-		// this.curveVisualizer = new BezierCurveVisualizer(this.mesh);
 	}
 
-	private getCurve() {
+	public getCurve() {
 		if (this.isCover) {
 			const backShift = this.rootThickness;
 			const leftShift =
@@ -222,7 +217,6 @@ export default class Page {
 		);
 
 		const curve = this.getCurve();
-		// this.curveVisualizer.update(curve);
 		const curveStretch = Math.max(curve.getLength() / this.width, 1);
 
 		const position = this.mesh.geometry.attributes.position;

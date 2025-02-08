@@ -45,6 +45,7 @@ type FlipbookSettings = {
 
 	showSpotLightHelper: boolean;
 	showSpotShadowHelper: boolean;
+	showPageCurveHelpers: boolean;
 };
 
 type PageParams = {

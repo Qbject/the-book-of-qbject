@@ -15,6 +15,7 @@ import VideoOverlay from "./video-overlay";
 import SlidingNumber, { ValueChangeEvent } from "./sliding-number";
 import SwipeHandler from "./swipe-handler";
 import IntroOverlay from "./intro-overlay";
+import PageCurveHelper from "./page-curve-helper";
 
 export default class Flipbook {
 	private containerEl: HTMLElement;
@@ -51,9 +52,11 @@ export default class Flipbook {
 
 		showSpotLightHelper: false,
 		showSpotShadowHelper: false,
+		showPageCurveHelpers: false,
 	};
 
 	private pages: Page[] = [];
+	private pageHelpers: PageCurveHelper[] = [];
 	private group: THREE.Group;
 	private scene: THREE.Scene;
 	private camera: THREE.PerspectiveCamera;
@@ -340,6 +343,7 @@ export default class Flipbook {
 		const helpersFolder = this.datGui.addFolder("Helpers");
 		helpersFolder.add(this.settings, "showSpotLightHelper");
 		helpersFolder.add(this.settings, "showSpotShadowHelper");
+		helpersFolder.add(this.settings, "showPageCurveHelpers");
 
 		const addChangeListeners = (gui: dat.GUI): void => {
 			gui.__controllers.forEach((controller: dat.GUIController) => {
@@ -657,6 +661,7 @@ export default class Flipbook {
 
 			if (page.needsUpdate()) {
 				page.update(dt);
+				this.pageHelpers[index]?.update();
 			}
 		});
 
@@ -820,6 +825,18 @@ export default class Flipbook {
 					this.spotLight.shadow.camera,
 				);
 				this.scene.add(this.spotShadowHelper);
+			}
+		}
+
+		if (typeof newSettings.showPageCurveHelpers !== "undefined") {
+			if (!newSettings.showPageCurveHelpers) {
+				this.pageHelpers.forEach(helper => helper.destroy());
+				this.pageHelpers = [];
+			}
+			if (!this.spotShadowHelper && newSettings.showPageCurveHelpers) {
+				this.pageHelpers = this.pages.map(
+					page => new PageCurveHelper(page),
+				);
 			}
 		}
 	}
