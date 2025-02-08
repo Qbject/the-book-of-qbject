@@ -6,7 +6,7 @@ import {
 	lerp,
 	clamp,
 } from "./util";
-// import BezierCurveVisualizer from "./BezierCurveVisualizer";
+// import BezierCurveVisualizer from "./bezier-curve-visualizer";
 
 export default class Page {
 	public textureUrls;

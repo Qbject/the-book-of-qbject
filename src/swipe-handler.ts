@@ -1,4 +1,4 @@
-import EventEmitter from "./EventEmitter";
+import EventEmitter from "./event-emitter";
 
 export default class SwipeHandler extends EventEmitter {
 	private curSwipe?: Swipe;

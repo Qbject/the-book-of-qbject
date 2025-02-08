@@ -9,11 +9,11 @@ import {
 } from "./util";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "stats.js";
-import Page from "./Page";
+import Page from "./page";
 import * as dat from "dat.gui";
 import VideoOverlay from "./video-overlay";
-import SlidingNumber, { ValueChangeEvent } from "./SlidingNumber";
-import SwipeHandler from "./SwipeHandler";
+import SlidingNumber, { ValueChangeEvent } from "./sliding-number";
+import SwipeHandler from "./swipe-handler";
 import IntroOverlay from "./intro-overlay";
 
 export default class Flipbook {

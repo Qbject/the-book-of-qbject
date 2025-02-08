@@ -1,5 +1,5 @@
 import { inverseLerp } from "three/src/math/MathUtils.js";
-import EventEmitter from "./EventEmitter";
+import EventEmitter from "./event-emitter";
 import { clamp } from "./util";
 
 export type ValueChangeEvent = {
