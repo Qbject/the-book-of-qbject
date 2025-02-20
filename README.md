@@ -30,4 +30,4 @@ The project is built with Three.js, TypeScript, Vite, HTML and CSS. Pages conten
 
 This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
 
-**Note:** The assets related to this project are stored in a separate repository and are not covered under this license.
+**Note:** The image and video assets related to this project and are not covered under this license.
