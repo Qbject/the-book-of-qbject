@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { smoothstep } from "three/src/math/MathUtils.js";
+import { MathUtils } from "three";
 
 export function clamp(value: number, min: number, max: number) {
 	return Math.min(Math.max(value, min), max);
@@ -69,7 +69,7 @@ export function sleep(ms: number) {
 }
 
 export function lerpedSmoothstep(value: number, min: number, max: number) {
-	const t = smoothstep(value, min, max);
+	const t = MathUtils.smoothstep(value, min, max);
 	return lerp(min, max, t);
 }
 
