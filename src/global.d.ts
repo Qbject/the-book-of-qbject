@@ -87,7 +87,8 @@ type PageActiveArea = PageArea & {
 	title?: string;
 	link?: string | (() => string);
 	video?: string;
-	zoom?: boolean;
+	zoom?: PageArea;
+	preserveDefaultCursor?: boolean;
 };
 
 type Swipe = {

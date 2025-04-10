@@ -485,7 +485,9 @@ export default class Flipbook {
 		if (this.isChangingFocus) {
 			cursor = "default";
 		} else if (this.focusedActiveArea) {
-			cursor = "pointer";
+			if (!this.focusedActiveArea.preserveDefaultCursor) {
+				cursor = "pointer";
+			}
 		} else if (
 			(this.isTurning() || this.isShifting()) &&
 			this.swipeHandler.isPointerDown()
@@ -495,7 +497,9 @@ export default class Flipbook {
 			const activeArea = this.getActiveAreaAt(this.sceneMousePos);
 
 			if (activeArea) {
-				cursor = "pointer";
+				if (!activeArea.preserveDefaultCursor) {
+					cursor = "pointer";
+				}
 				title = activeArea.title || "";
 
 				if (typeof activeArea.link === "function") {
@@ -1070,7 +1074,7 @@ export default class Flipbook {
 
 		const page = this.pages[Math.floor(area.faceIndex / 2)];
 		const isBackside = area.faceIndex % 2 === 1;
-		const corners = page.getPageAreaCorners(area, isBackside);
+		const corners = page.getPageAreaCorners(area?.zoom || area, isBackside);
 
 		this.focusedActiveArea = area;
 		this.isChangingFocus = true;
