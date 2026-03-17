@@ -137,8 +137,8 @@ document.addEventListener("DOMContentLoaded", () => {
 				faceIndex: 18,
 				link: "https://github.com/Qbject",
 				top: 820 / pageHeight,
-				left: 380 / pageWidth,
-				width: 157 / pageWidth,
+				left: 365 / pageWidth,
+				width: 115 / pageWidth,
 				height: 50 / pageHeight,
 			},
 			{
